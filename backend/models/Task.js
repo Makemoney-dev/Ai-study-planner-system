@@ -54,4 +54,4 @@ TaskSchema.pre('save', function(next) {
   next();
 });
 
-module.exports = mongoose.model('Task', TaskSchema);
+module.exports = mongoose.models.task || mongoose.model('task', TaskSchema);

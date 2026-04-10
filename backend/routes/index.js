@@ -5,6 +5,7 @@ const { protect } = require('../middleware/auth');
 // Auth routes
 const authController = require('../controllers/authController');
 router.post('/auth/register', authController.register);
+console.log("Routes are loading...");
 router.post('/auth/login', authController.login);
 router.get('/auth/me', protect, authController.getMe);
 router.put('/auth/preferences', protect, authController.updatePreferences);
@@ -36,17 +37,6 @@ router.put('/sessions/:id/complete', protect, analyticsController.completeSessio
 router.post('/alarms', protect, analyticsController.setAlarm);
 router.get('/alarms', protect, analyticsController.getAlarms);
 router.delete('/alarms/:id', protect, analyticsController.deleteAlarm);
-
-// Study Plans
-const StudyPlan = require('../models/StudyPlan');
-router.get('/study-plans', protect, async (req, res) => {
-  try {
-    const plans = await StudyPlan.find({ user: req.user.id }).sort('-createdAt');
-    res.json({ success: true, plans });
-  } catch(e) {
-    res.status(500).json({ success: false, message: e.message });
-  }
-});
 
 router.get('/study-plans/:id', protect, async (req, res) => {
   try {

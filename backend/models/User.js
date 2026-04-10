@@ -47,6 +47,7 @@ const UserSchema = new mongoose.Schema({
 // Hash password before save
 UserSchema.pre('save', async function(next) {
   if (!this.isModified('password')) return next();
+  const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, 12);
   next();
 });
@@ -57,4 +58,4 @@ UserSchema.methods.comparePassword = async function(candidatePassword) {
 
 };
 
-module.exports = mongoose.model('User', UserSchema);
+module.exports = mongoose.models.user || mongoose.model('user', UserSchema);
