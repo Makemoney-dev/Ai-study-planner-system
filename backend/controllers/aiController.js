@@ -2,37 +2,133 @@ const StudyPlan = require('../models/StudyPlan');
 const { Flashcard } = require('../models/Session');
 const User = require('../models/User');
 
-// Helper: Call Anthropic Claude API
-async function callClaude(messages, systemPrompt, maxTokens = 2048) {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  
-  if (!apiKey || apiKey === 'your_anthropic_api_key_here') {
-    // Return mock data for demo mode
+// Helper: Call AI (Supports Groq, Anthropic, and OpenAI)
+async function callAI(messages, systemPrompt, maxTokens = 2048) {
+  const groqKey = process.env.GROQ_API_KEY;
+  const anthropicKey = process.env.ANTHROPIC_API_KEY;
+  const openaiKey = process.env.OPENAI_API_KEY;
+
+  // 1. Prioritize Groq API
+  if (groqKey && groqKey !== 'your_groq_api_key_here') {
+    try {
+      const fullMessages = [
+        ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
+        ...messages
+      ];
+
+      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${groqKey}`
+        },
+        body: JSON.stringify({
+          model: 'openai/gpt-oss-120b',
+          max_completion_tokens: maxTokens,
+          messages: fullMessages,
+          temperature: 0.7
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const content = data.choices?.[0]?.message?.content;
+        if (content) return content;
+      } else {
+        const err = await response.text();
+        console.warn('Groq API warning:', err);
+      }
+    } catch (err) {
+      console.warn('Groq request error:', err.message);
+    }
+  }
+
+  // 2. Anthropic API
+  if (anthropicKey && anthropicKey !== 'your_anthropic_api_key_here') {
+    try {
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': anthropicKey,
+          'anthropic-version': '2023-06-01'
+        },
+        body: JSON.stringify({
+          model: 'claude-3-haiku-20240307',
+          max_tokens: maxTokens,
+          system: systemPrompt,
+          messages
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const content = data.content?.[0]?.text;
+        if (content) return content;
+      }
+    } catch (err) {
+      console.warn('Anthropic request error:', err.message);
+    }
+  }
+
+  // 3. OpenAI API
+  if (openaiKey && openaiKey !== 'your_openai_key_here') {
+    try {
+      const fullMessages = [
+        ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
+        ...messages
+      ];
+
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${openaiKey}`
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          max_tokens: maxTokens,
+          messages: fullMessages
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const content = data.choices?.[0]?.message?.content;
+        if (content) return content;
+      }
+    } catch (err) {
+      console.warn('OpenAI request error:', err.message);
+    }
+  }
+
+  // Fallback to mock data if no key or all calls fail
+  return null;
+}
+
+// Backwards-compatibility alias
+const callClaude = callAI;
+
+// Helper to safely parse JSON from AI outputs
+function parseJsonSafely(text) {
+  if (!text) return null;
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    const codeBlockMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+    if (codeBlockMatch) {
+      try {
+        return JSON.parse(codeBlockMatch[1]);
+      } catch (err) {}
+    }
+    const braceMatch = text.match(/\{[\s\S]*\}/);
+    if (braceMatch) {
+      try {
+        return JSON.parse(braceMatch[0]);
+      } catch (err) {}
+    }
     return null;
   }
-
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01'
-    },
-    body: JSON.stringify({
-      model: 'claude-opus-4-5',
-      max_tokens: maxTokens,
-      system: systemPrompt,
-      messages
-    })
-  });
-
-  if (!response.ok) {
-    const err = await response.json();
-    throw new Error(err.error?.message || 'AI API error');
-  }
-
-  const data = await response.json();
-  return data.content[0].text;
 }
 
 // POST /api/ai/generate-study-plan
@@ -52,13 +148,13 @@ exports.generateStudyPlan = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Exam date must be in the future' });
     }
 
-    const systemPrompt = `You are an expert study planner AI. Create detailed, personalized study plans. Always respond with valid JSON only, no extra text.`;
+    const systemPrompt = `You are an expert study planner AI. Create detailed, personalized study plans. Always respond with valid JSON only, no markdown, no conversational commentary.`;
     
     const userMessage = `Create a study plan for these subjects: ${JSON.stringify(subjects)}.
 Exam date: ${examDate} (${daysUntilExam} days from today: ${today.toISOString().split('T')[0]})
 Daily study hours available: ${dailyHours}
 
-Return a JSON object with:
+Return a valid JSON object with exactly this schema:
 {
   "planTitle": "string",
   "overview": "string - 2-3 sentences",
@@ -69,34 +165,27 @@ Return a JSON object with:
       "theme": "string",
       "focus": ["subject1", "subject2"],
       "dailyBreakdown": {
-        "Monday": [{"subject": "string", "topic": "string", "duration": 60, "type": "study|revision|practice"}],
-        "Tuesday": [...],
-        "Wednesday": [...],
-        "Thursday": [...],
-        "Friday": [...],
-        "Saturday": [...],
+        "Monday": [{"subject": "string", "topic": "string", "duration": 60, "type": "study"}],
+        "Tuesday": [{"subject": "string", "topic": "string", "duration": 60, "type": "study"}],
+        "Wednesday": [{"subject": "string", "topic": "string", "duration": 60, "type": "practice"}],
+        "Thursday": [{"subject": "string", "topic": "string", "duration": 60, "type": "study"}],
+        "Friday": [{"subject": "string", "topic": "string", "duration": 60, "type": "revision"}],
+        "Saturday": [{"subject": "string", "topic": "string", "duration": 60, "type": "practice"}],
         "Sunday": [{"type": "break", "activity": "light review"}]
       }
     }
   ],
   "revisionSchedule": "string",
   "motivationalTip": "string",
-  "difficultyAnalysis": [{"subject": "string", "recommendedHours": number, "priority": "high|medium|low"}]
+  "difficultyAnalysis": [{"subject": "string", "recommendedHours": 2, "priority": "high"}]
 }
 
 Keep it to ${Math.min(daysUntilExam > 7 ? 4 : 1, 4)} weeks.`;
 
-    let aiResponse = await callClaude([{ role: 'user', content: userMessage }], systemPrompt, 3000);
+    let aiResponse = await callAI([{ role: 'user', content: userMessage }], systemPrompt, 3000);
 
-    let parsedPlan;
-    if (aiResponse) {
-      try {
-        const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
-        parsedPlan = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(aiResponse);
-      } catch(e) {
-        parsedPlan = getMockStudyPlan(subjects, daysUntilExam, dailyHours);
-      }
-    } else {
+    let parsedPlan = parseJsonSafely(aiResponse);
+    if (!parsedPlan) {
       parsedPlan = getMockStudyPlan(subjects, daysUntilExam, dailyHours);
     }
 
@@ -155,7 +244,7 @@ Be encouraging, clear, and concise. Format responses with markdown when helpful.
       { role: 'user', content: message }
     ];
 
-    let aiResponse = await callClaude(messages, systemPrompt, 1500);
+    let aiResponse = await callAI(messages, systemPrompt, 1500);
 
     if (!aiResponse) {
       aiResponse = getMockChatResponse(message);
@@ -182,26 +271,18 @@ exports.generateFlashcards = async (req, res) => {
     const userMessage = `Create ${count} flashcards about "${topic}" for ${subject || 'general study'}.
 Difficulty level: ${difficulty}
 
-Return JSON:
+Return valid JSON with format:
 {
   "cards": [
-    {"front": "question or term", "back": "answer or definition", "difficulty": "easy|medium|hard"},
-    ...
+    {"front": "question or term", "back": "answer or definition", "difficulty": "${difficulty}"}
   ]
 }`;
 
-    let aiResponse = await callClaude([{ role: 'user', content: userMessage }], systemPrompt, 2000);
+    let aiResponse = await callAI([{ role: 'user', content: userMessage }], systemPrompt, 2000);
 
-    let cards;
-    if (aiResponse) {
-      try {
-        const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
-        const parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(aiResponse);
-        cards = parsed.cards;
-      } catch(e) {
-        cards = getMockFlashcards(topic, count);
-      }
-    } else {
+    let parsed = parseJsonSafely(aiResponse);
+    let cards = parsed?.cards;
+    if (!cards || !Array.isArray(cards) || cards.length === 0) {
       cards = getMockFlashcards(topic, count);
     }
 
@@ -239,7 +320,7 @@ exports.summarize = async (req, res) => {
     const systemPrompt = `You are an expert at summarizing educational content. Create clear, well-structured summaries.`;
     const userMessage = `Summarize this content in a ${style} style. Use bullet points and clear headings:\n\n${text}`;
 
-    let summary = await callClaude([{ role: 'user', content: userMessage }], systemPrompt, 1000);
+    let summary = await callAI([{ role: 'user', content: userMessage }], systemPrompt, 1000);
     if (!summary) summary = `**Summary of your notes:**\n\n• Key point 1 from your content\n• Key point 2 from your content\n• Main concepts identified\n\n*Note: Connect your AI API key in .env for full AI-powered summaries.*`;
 
     res.json({ success: true, summary });
@@ -270,7 +351,7 @@ exports.getMotivation = async (req, res) => {
   }
 };
 
-// Mock data for demo mode (no API key)
+// Mock data for demo mode (fallback)
 function getMockStudyPlan(subjects, days, hours) {
   return {
     planTitle: `${days}-Day Study Plan`,
@@ -309,15 +390,15 @@ function getMockStudyPlan(subjects, days, hours) {
 function getMockChatResponse(message) {
   const lower = message.toLowerCase();
   if (lower.includes('quiz') || lower.includes('question')) {
-    return `Here are some practice questions:\n\n**Q1:** What is the main concept you're studying?\n**Q2:** Can you explain it in simple terms?\n**Q3:** How does it apply in real-world scenarios?\n\n*💡 Tip: Connect your Anthropic API key in the .env file for full AI-powered responses!*`;
+    return `Here are some practice questions:\n\n**Q1:** What is the main concept you're studying?\n**Q2:** Can you explain it in simple terms?\n**Q3:** How does it apply in real-world scenarios?`;
   }
   if (lower.includes('explain') || lower.includes('what is')) {
-    return `Great question! Here's a breakdown:\n\n**Key Points:**\n• Start with the fundamentals\n• Build understanding step by step\n• Connect new info to what you already know\n\n**Study Tip:** Use the Feynman Technique — explain it as if teaching a 5-year-old!\n\n*Connect your API key for detailed AI explanations.*`;
+    return `Great question! Here's a breakdown:\n\n**Key Points:**\n• Start with the fundamentals\n• Build understanding step by step\n• Connect new info to what you already know\n\n**Study Tip:** Use the Feynman Technique — explain it as if teaching a 5-year-old!`;
   }
   if (lower.includes('summarize') || lower.includes('summary')) {
-    return `**Summary Framework:**\n\n1. **Main Idea** — The core concept\n2. **Key Points** — 3-5 supporting ideas\n3. **Examples** — Real-world applications\n4. **Connections** — How it links to other topics\n\n*Add your Anthropic API key for AI-powered summaries of your actual content!*`;
+    return `**Summary Framework:**\n\n1. **Main Idea** — The core concept\n2. **Key Points** — 3-5 supporting ideas\n3. **Examples** — Real-world applications\n4. **Connections** — How it links to other topics`;
   }
-  return `I'm StudyBot, your AI study assistant! 🤖\n\nI can help you with:\n• **Explaining topics** — Just ask "Explain [topic]"\n• **Creating quizzes** — Ask "Create a quiz on [subject]"\n• **Summarizing notes** — Share your notes and I'll summarize\n• **Study strategies** — Ask for tips on any subject\n\n*Note: Add your Anthropic API key to .env for full AI capabilities!*`;
+  return `I'm StudyBot, your AI study assistant! 🤖\n\nI can help you with:\n• **Explaining topics** — Just ask "Explain [topic]"\n• **Creating quizzes** — Ask "Create a quiz on [subject]"\n• **Summarizing notes** — Share your notes and I'll summarize\n• **Study strategies** — Ask for tips on any subject`;
 }
 
 function getMockFlashcards(topic, count) {
@@ -325,7 +406,7 @@ function getMockFlashcards(topic, count) {
   for (let i = 1; i <= Math.min(count, 5); i++) {
     cards.push({
       front: `What is a key concept #${i} in ${topic}?`,
-      back: `This is a key definition or explanation for concept #${i}. Connect your API key for real AI-generated flashcards!`,
+      back: `This is a key definition or explanation for concept #${i}.`,
       difficulty: i <= 2 ? 'easy' : i <= 4 ? 'medium' : 'hard'
     });
   }

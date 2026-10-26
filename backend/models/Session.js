@@ -1,10 +1,10 @@
-import { Schema, model } from 'mongoose';
+const mongoose = require('mongoose');
 
 // Study Session (Pomodoro tracking)
-const SessionSchema = new Schema({
-  user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+const SessionSchema = new mongoose.Schema({
+  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   subject: { type: String, trim: true },
-  task: { type: Schema.Types.ObjectId, ref: 'Task', default: null },
+  task: { type: mongoose.Schema.Types.ObjectId, ref: 'Task', default: null },
   type: { type: String, enum: ['pomodoro', 'short-break', 'long-break', 'free'], default: 'pomodoro' },
   plannedMinutes: { type: Number, required: true },
   actualMinutes: { type: Number, default: 0 },
@@ -18,8 +18,8 @@ const SessionSchema = new Schema({
 });
 
 // Flashcard model
-const FlashcardSchema = new Schema({
-  user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+const FlashcardSchema = new mongoose.Schema({
+  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   subject: { type: String, trim: true },
   topic: { type: String, trim: true },
   cards: [{
@@ -36,8 +36,9 @@ const FlashcardSchema = new Schema({
 });
 
 // Alarm model
-const AlarmSchema = new Schema({
-  user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+const AlarmSchema = new mongoose.Schema({
+
+  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   title: { type: String, required: true },
   message: { type: String },
   time: { type: Date, required: true },
@@ -48,6 +49,8 @@ const AlarmSchema = new Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
-export const session = model('session', SessionSchema);
-export const Flashcard = model('Flashcard', FlashcardSchema);
-export const Alarm = model('Alarm', AlarmSchema);
+module.exports = {
+  Session: mongoose.models.Session || mongoose.model('Session', SessionSchema),
+  Flashcard: mongoose.models.Flashcard || mongoose.model('Flashcard', FlashcardSchema),
+  Alarm: mongoose.models.Alarm || mongoose.model('Alarm', AlarmSchema)
+};

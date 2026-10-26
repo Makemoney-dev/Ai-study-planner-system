@@ -41,4 +41,4 @@ const StudyPlanSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
-module.exports = mongoose.models.studyPlan || mongoose.model('studyPlan', StudyPlanSchema);
+module.exports = mongoose.models.StudyPlan || mongoose.models.studyPlan || mongoose.model('StudyPlan', StudyPlanSchema);

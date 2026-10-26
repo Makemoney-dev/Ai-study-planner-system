@@ -7,7 +7,6 @@ const UserSchema = new mongoose.Schema({
     required: [true, 'Name is required'],
     trim: true,
     maxlength: [50, 'Name cannot exceed 50 characters']
-
   },
   email: {
     type: String,
@@ -19,9 +18,8 @@ const UserSchema = new mongoose.Schema({
   password: {
     type: String,
     required: [true, 'Password is required'],
-    minlength: 8,
-    select: false,
-    set: val => (val.length >= 8 ? val : undefined) // Ensure password is at least 8 characters
+    minlength: [6, 'Password must be at least 6 characters'],
+    select: false
   },
   avatar: {
     type: String,
@@ -48,14 +46,13 @@ const UserSchema = new mongoose.Schema({
 UserSchema.pre('save', async function(next) {
   if (!this.isModified('password')) return next();
   const salt = await bcrypt.genSalt(10);
-  this.password = await bcrypt.hash(this.password, 12);
+  this.password = await bcrypt.hash(this.password, salt);
   next();
 });
 
 // Compare password method
 UserSchema.methods.comparePassword = async function(candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
-
 };
 
-module.exports = mongoose.models.user || mongoose.model('user', UserSchema);
+module.exports = mongoose.models.User || mongoose.models.user || mongoose.model('User', UserSchema);
