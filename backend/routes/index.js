@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
+const jwt = require('jsonwebtoken');
 const { protect } = require('../middleware/auth');
+const User = require('../models/User');
 const StudyPlan = require('../models/StudyPlan');
 
 // Auth routes
@@ -9,6 +11,43 @@ router.post('/auth/register', authController.register);
 router.post('/auth/login', authController.login);
 router.get('/auth/me', protect, authController.getMe);
 router.put('/auth/preferences', protect, authController.updatePreferences);
+
+// Direct default token access (no login required)
+router.get('/auth/default-token', async (req, res) => {
+  try {
+    let user = await User.findOne({ email: 'explorer@synapse.ai' });
+    if (!user) {
+      user = await User.create({
+        name: 'Explorer',
+        email: 'explorer@synapse.ai',
+        password: 'default_quantum_pass_123'
+      });
+    }
+    const jwtSecret = process.env.JWT_SECRET || 'study_planner_super_secret_jwt_key';
+    const token = jwt.sign({ id: user._id }, jwtSecret, { expiresIn: '365d' });
+    res.json({
+      success: true,
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        preferences: user.preferences,
+        stats: user.stats
+      }
+    });
+  } catch (e) {
+    res.json({
+      success: true,
+      token: 'guest_token',
+      user: {
+        id: 'guest_id',
+        name: 'Explorer',
+        email: 'explorer@synapse.ai'
+      }
+    });
+  }
+});
 
 // Task routes
 const taskController = require('../controllers/taskController');

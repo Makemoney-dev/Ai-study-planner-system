@@ -2,13 +2,62 @@ const StudyPlan = require('../models/StudyPlan');
 const { Flashcard } = require('../models/Session');
 const User = require('../models/User');
 
-// Helper: Call AI (Supports Groq, Anthropic, and OpenAI)
+// Helper: Call AI (Supports Gemini, Groq, Anthropic, and OpenAI)
 async function callAI(messages, systemPrompt, maxTokens = 2048) {
+  const geminiKey = process.env.GEMINI_API_KEY;
   const groqKey = process.env.GROQ_API_KEY;
   const anthropicKey = process.env.ANTHROPIC_API_KEY;
   const openaiKey = process.env.OPENAI_API_KEY;
 
-  // 1. Prioritize Groq API
+  // 1. Prioritize Google Gemini API
+  if (geminiKey && geminiKey !== 'your_gemini_api_key_here') {
+    try {
+      const contents = messages.map(m => ({
+        role: m.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: m.content }]
+      }));
+
+      const payload = {
+        contents,
+        generationConfig: {
+          maxOutputTokens: maxTokens,
+          temperature: 0.7
+        }
+      };
+
+      if (systemPrompt) {
+        payload.systemInstruction = {
+          parts: [{ text: systemPrompt }]
+        };
+      }
+
+      const models = ['gemini-3.5-flash-lite', 'gemini-flash-latest', 'gemini-3.8-flash'];
+      for (const model of models) {
+        try {
+          const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (content) return content;
+          } else {
+            const err = await response.text();
+            console.warn(`Gemini (${model}) API warning:`, err);
+          }
+        } catch (mErr) {
+          console.warn(`Gemini (${model}) request error:`, mErr.message);
+        }
+      }
+    } catch (err) {
+      console.warn('Gemini request error:', err.message);
+    }
+  }
+
+  // 2. Groq API
   if (groqKey && groqKey !== 'your_groq_api_key_here') {
     try {
       const fullMessages = [
