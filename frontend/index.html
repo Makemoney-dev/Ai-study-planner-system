@@ -339,16 +339,15 @@
       <h1 class="topbar-title" id="topbar-title">Dashboard</h1>
 
       <div class="topbar-actions">
-        <!-- Audio Chime Toggle -->
-        <button class="btn btn-ghost btn-icon" id="sfx-toggle" onclick="toggleSFXMute()" title="Toggle Sound">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
-        </button>
         <!-- Theme Toggle -->
         <button class="btn btn-ghost btn-icon" id="theme-toggle" onclick="toggleTheme()" title="Toggle Dark/Light Mode">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" x2="12" y1="1" y2="3"/><line x1="12" x2="12" y1="21" y2="23"/><line x1="4.22" x2="5.64" y1="4.22" y2="5.64"/><line x1="18.36" x2="19.78" y1="18.36" y2="19.78"/><line x1="1" x2="3" y1="12" y2="12"/><line x1="21" x2="23" y1="12" y2="12"/><line x1="4.22" x2="5.64" y1="19.78" y2="18.36"/><line x1="18.36" x2="19.78" y1="5.64" y2="4.22"/></svg>
         </button>
-        <!-- Sign Out -->
-        <button class="btn btn-ghost btn-sm" onclick="logout()" title="Sign Out">Sign Out</button>
+        <!-- Sign Out Button -->
+        <button type="button" class="btn btn-secondary btn-sm" onclick="logout()" title="Sign Out" style="display:inline-flex;align-items:center;gap:6px;font-weight:600;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
+          <span>Sign Out</span>
+        </button>
       </div>
     </header>
 
