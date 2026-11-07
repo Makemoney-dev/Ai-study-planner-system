@@ -1119,6 +1119,32 @@ function updateTimerRing(progress) {
 /* ═══════════════════════════════════════════════════════
    AI CHAT ASSISTANT
    ═══════════════════════════════════════════════════════ */
+function submitChat() {
+  const input = document.getElementById('chat-input');
+  if (!input) return;
+  const msg = input.value.trim();
+  if (!msg) return;
+  input.value = '';
+  input.style.height = 'auto';
+  sendChatMessage(msg);
+}
+
+function handleChatKeydown(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    submitChat();
+  }
+}
+
+function chatSuggestion(text) {
+  const input = document.getElementById('chat-input');
+  if (input) {
+    input.value = text;
+    input.focus();
+  }
+  submitChat();
+}
+
 async function sendChatMessage(message) {
   if (!message.trim()) return;
 
