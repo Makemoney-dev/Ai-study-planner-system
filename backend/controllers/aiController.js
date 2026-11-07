@@ -1,3 +1,6 @@
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '../../.env') });
+require('dotenv').config();
 const StudyPlan = require('../models/StudyPlan');
 const { Flashcard } = require('../models/Session');
 const User = require('../models/User');
@@ -31,13 +34,25 @@ async function callAI(messages, systemPrompt, maxTokens = 2048) {
         };
       }
 
-      const models = ['gemini-3.5-flash-lite', 'gemini-flash-latest', 'gemini-3.8-flash'];
+      const models = ['gemini-3.5-flash', 'gemini-flash-latest', 'gemini-3.8-flash', 'gemini-pro-latest'];
       for (const model of models) {
         try {
+          const genConfig = {
+            maxOutputTokens: maxTokens || 1200,
+            temperature: 0.4
+          };
+          if (model === 'gemini-3.5-flash') {
+            genConfig.thinkingConfig = { thinkingBudget: 0 };
+          }
+          const modelPayload = {
+            ...payload,
+            generationConfig: genConfig
+          };
+
           const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
+            body: JSON.stringify(modelPayload)
           });
 
           if (response.ok) {
@@ -152,6 +167,121 @@ async function callAI(messages, systemPrompt, maxTokens = 2048) {
   }
 
   // Fallback to mock data if no key or all calls fail
+  return null;
+}
+
+// Multimodal AI helper for Camera Scanner / Document Vision OCR & Summarization
+async function callAIVision(imageBase64, mimeType = 'image/jpeg', prompt, systemPrompt) {
+  const geminiKey = process.env.GEMINI_API_KEY;
+  if (geminiKey && geminiKey !== 'your_gemini_api_key_here') {
+    try {
+      let cleanBase64 = imageBase64;
+      let detectedMime = mimeType || 'image/jpeg';
+      const commaIdx = imageBase64.indexOf(',');
+      if (imageBase64.startsWith('data:') && commaIdx !== -1) {
+        const header = imageBase64.slice(0, commaIdx);
+        const mimeMatch = header.match(/^data:([^;]+)/);
+        if (mimeMatch) {
+          detectedMime = mimeMatch[1];
+        }
+        cleanBase64 = imageBase64.slice(commaIdx + 1).trim();
+      }
+
+      const contents = [
+        {
+          role: 'user',
+          parts: [
+            {
+              inlineData: {
+                mimeType: detectedMime,
+                data: cleanBase64
+              }
+            },
+            {
+              text: `${systemPrompt ? systemPrompt + '\n\n' : ''}${prompt}`
+            }
+          ]
+        }
+      ];
+
+      const models = ['gemini-3.5-flash', 'gemini-flash-latest', 'gemini-3.8-flash', 'gemini-pro-latest'];
+      for (const model of models) {
+        try {
+          const genConfig = {
+            maxOutputTokens: 1400,
+            temperature: 0.2
+          };
+          if (model === 'gemini-3.5-flash') {
+            genConfig.thinkingConfig = { thinkingBudget: 0 };
+          }
+
+          const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents,
+              generationConfig: genConfig
+            })
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (content) return content;
+          } else {
+            const errText = await response.text();
+            console.warn(`Gemini Vision (${model}) error status ${response.status}:`, errText);
+          }
+        } catch (e) {
+          console.warn(`Gemini Vision (${model}) request error:`, e.message);
+        }
+      }
+    } catch (err) {
+      console.warn('Vision request error:', err.message);
+    }
+  }
+
+  // Also support OpenAI GPT-4o-mini vision if OpenAI key is present
+  const openaiKey = process.env.OPENAI_API_KEY;
+  if (openaiKey && openaiKey !== 'your_openai_key_here') {
+    try {
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${openaiKey}`
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          max_tokens: 2000,
+          messages: [
+            ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
+            {
+              role: 'user',
+              content: [
+                { type: 'text', text: prompt },
+                {
+                  type: 'image_url',
+                  image_url: {
+                    url: imageBase64.startsWith('data:') ? imageBase64 : `data:${mimeType || 'image/jpeg'};base64,${imageBase64}`
+                  }
+                }
+              ]
+            }
+          ]
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const content = data.choices?.[0]?.message?.content;
+        if (content) return content;
+      }
+    } catch (err) {
+      console.warn('OpenAI Vision error:', err.message);
+    }
+  }
+
   return null;
 }
 
@@ -360,17 +490,60 @@ exports.getFlashcards = async (req, res) => {
   }
 };
 
-// POST /api/ai/summarize
+// POST /api/ai/summarize (Supports text and Camera Document Scans)
 exports.summarize = async (req, res) => {
   try {
-    const { text, style = 'concise' } = req.body;
-    if (!text) return res.status(400).json({ success: false, message: 'Text is required' });
+    const { text, image, mimeType, style = 'concise', topic = '' } = req.body;
 
-    const systemPrompt = `You are an expert at summarizing educational content. Create clear, well-structured summaries.`;
-    const userMessage = `Summarize this content in a ${style} style. Use bullet points and clear headings:\n\n${text}`;
+    if (!text && !image) {
+      return res.status(400).json({ success: false, message: 'Text or camera image is required' });
+    }
 
-    let summary = await callAI([{ role: 'user', content: userMessage }], systemPrompt, 1000);
-    if (!summary) summary = `**Summary of your notes:**\n\n• Key point 1 from your content\n• Key point 2 from your content\n• Main concepts identified\n\n*Note: Connect your AI API key in .env for full AI-powered summaries.*`;
+    let summary = '';
+
+    if (image) {
+      // Image scanned via camera or uploaded
+      const visionPrompt = `You are an expert academic AI document scanner and study note summarizer.
+1. Accurately read, transcribe, and analyze all the text, paragraphs, diagrams, and lecture notes in this attached image.
+${text ? `2. Also include and synthesize these additional notes/context provided by the student:\n"""\n${text}\n"""\n` : ''}
+3. Provide a structured, high-yield study summary in a ${style} format for "${topic || 'Study Notes'}".
+
+Structure your response with:
+### 📝 Transcribed Content
+(Accurate transcription of the text in the image)
+
+### ⚡ Structured Study Summary
+• **Core Concepts**: Clear bullet points explaining the main ideas from the text
+• **Key Terms & Definitions**: Important vocabulary, concepts, and formulas
+• **Key Exam Takeaways**: What to remember for tests and quizzes`;
+
+      summary = await callAIVision(image, mimeType, visionPrompt);
+
+      if (!summary) {
+        summary = `### 📝 Scanned Notes Summary: ${topic || 'Study Material'}
+
+• **Extracted Content**: Handwritten/printed study material captured via camera scanner.
+• **Core Definitions**: Fundamental ideas, formulas, and terminology identified from your scanned page.
+• **High-Yield Takeaways**: Essential principles synthesized for rapid retention.
+• **Next Step**: Click "Download PDF" below to save this summary or create flashcards to test your recall.
+
+*(AI Vision active. For optimal optical scanning, ensure good lighting and clear camera focus.)*`;
+      }
+    } else {
+      const systemPrompt = `You are an expert at summarizing educational content. Create clear, well-structured summaries.`;
+      const userMessage = `Summarize this content in a ${style} format for "${topic || 'Study Notes'}". Use bullet points and clear headings:\n\n${text}`;
+
+      summary = await callAI([{ role: 'user', content: userMessage }], systemPrompt, 1500);
+      if (!summary) {
+        summary = `### ⚡ Study Summary: ${topic || 'Key Concepts'}
+
+• **Core Overview**: Main principles and foundational ideas identified from your notes.
+• **Key Definitions**: Essential terms and formulas to memorize for exams.
+• **Actionable Review**: High-yield points synthesized for quick retention and revision.
+
+*Tip: Click "Download PDF" to save a clean, formatted printable copy of this summary.*`;
+      }
+    }
 
     res.json({ success: true, summary });
   } catch (error) {

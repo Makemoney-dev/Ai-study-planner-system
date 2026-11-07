@@ -9,6 +9,34 @@ const StudyPlan = require('../models/StudyPlan');
 const authController = require('../controllers/authController');
 router.post('/auth/register', authController.register);
 router.post('/auth/login', authController.login);
+router.post('/auth/google', authController.googleLogin);
+router.get('/auth/google/config', (req, res) => {
+  res.json({ clientId: process.env.GOOGLE_CLIENT_ID || '' });
+});
+router.post('/auth/google/set-client-id', (req, res) => {
+  const { clientId } = req.body;
+  if (!clientId || !clientId.trim()) {
+    return res.status(400).json({ success: false, message: 'Google Client ID is required' });
+  }
+  process.env.GOOGLE_CLIENT_ID = clientId.trim();
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const envPath = path.join(__dirname, '../../.env');
+    if (fs.existsSync(envPath)) {
+      let content = fs.readFileSync(envPath, 'utf8');
+      if (content.includes('GOOGLE_CLIENT_ID=')) {
+        content = content.replace(/GOOGLE_CLIENT_ID=.*/g, `GOOGLE_CLIENT_ID=${clientId.trim()}`);
+      } else {
+        content += `\nGOOGLE_CLIENT_ID=${clientId.trim()}\n`;
+      }
+      fs.writeFileSync(envPath, content, 'utf8');
+    }
+  } catch (e) {}
+  res.json({ success: true, clientId: process.env.GOOGLE_CLIENT_ID });
+});
+router.post('/auth/forgot-password', authController.forgotPassword);
+router.post('/auth/reset-password', authController.resetPassword);
 router.get('/auth/me', protect, authController.getMe);
 router.put('/auth/preferences', protect, authController.updatePreferences);
 

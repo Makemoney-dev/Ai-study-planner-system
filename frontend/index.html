@@ -3,90 +3,312 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>AI Study Planner — Quantum Learning HUD</title>
+  <title>AI Study Planner — Study Smarter with AI</title>
   <link rel="stylesheet" href="style.css" />
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234f46e5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z'/><path d='M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z'/></svg>" />
+  <!-- Google Official Identity Services -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <!-- PDF Generation Libraries (Vector jsPDF + html2pdf fallback) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
 
-<!-- ══════════════════════════════════════════ -->
-<!-- CYBER AMBIENT CANVAS & PLASMA OVERLAYS     -->
-<!-- ══════════════════════════════════════════ -->
-<canvas id="cyber-canvas"></canvas>
-<div class="cyber-grid-overlay"></div>
-<div class="plasma-orb cyan"></div>
-<div class="plasma-orb purple"></div>
 <div class="sidebar-backdrop" id="sidebar-backdrop" onclick="toggleMobileSidebar(false)"></div>
 
 <!-- ══════════════════════════════════════════ -->
-<!-- CYBER COMMAND CENTER / OMNIBAR (CTRL+K)    -->
+<!-- QUICK SEARCH / COMMAND PALETTE (CTRL+K)    -->
 <!-- ══════════════════════════════════════════ -->
 <div class="omnibar-overlay" id="omnibar-overlay" onclick="if(event.target === this) closeOmnibar()">
   <div class="omnibar-modal">
     <div class="omnibar-header">
-      <span style="font-size:18px;">⚡</span>
-      <input type="text" class="omnibar-input" id="omnibar-input" placeholder="Type a command or search mission..." oninput="renderOmnibarResults(this.value)" />
-      <span class="hud-tag">ESC TO CLOSE</span>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-muted);flex-shrink:0;"><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/></svg>
+      <input type="text" class="omnibar-input" id="omnibar-input" placeholder="Search tasks, navigate pages, or run commands..." oninput="renderOmnibarResults(this.value)" />
+      <span class="hud-tag">ESC</span>
     </div>
     <div class="omnibar-results" id="omnibar-results"></div>
   </div>
 </div>
 
 <!-- ══════════════════════════════════════════ -->
+<!-- AUTHENTICATION PAGE                        -->
+<!-- ══════════════════════════════════════════ -->
+<div id="auth-page" class="auth-page">
+  <div class="auth-container">
+    <div class="auth-logo">
+      <div class="logo-mark">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+          <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+        </svg>
+      </div>
+      <h1>AI Study Planner</h1>
+      <p>Your simple, smart AI study companion</p>
+    </div>
+
+    <div class="auth-card">
+      <!-- Tabs (Login / Register) -->
+      <div class="auth-tabs" id="auth-main-tabs">
+        <div class="auth-tab active" id="tab-login" onclick="switchAuthTab('login')">Sign In</div>
+        <div class="auth-tab" id="tab-register" onclick="switchAuthTab('register')">Create Account</div>
+      </div>
+
+      <!-- Google Official Direct Sign In -->
+      <button type="button" class="btn btn-google btn-full mb-12" id="google-auth-btn" onclick="handleGoogleLoginDirect()">
+        <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
+        Continue with Google
+      </button>
+      <div id="google-official-btn" style="display:none;width:100%;margin-bottom:12px;"></div>
+
+      <div class="auth-divider">
+        <span>or sign in with email</span>
+      </div>
+
+      <!-- SIGN IN FORM -->
+      <form id="login-form" onsubmit="handleLoginSubmit(event)">
+        <div class="form-group">
+          <label class="form-label">Email Address</label>
+          <input type="email" class="form-input" id="login-email" placeholder="you@example.com" required autocomplete="email" />
+        </div>
+
+        <div class="form-group">
+          <div class="flex-between mb-4">
+            <label class="form-label" style="margin-bottom:0;">Password</label>
+            <span class="text-xs text-accent pointer" onclick="switchAuthTab('forgot')">Forgot password?</span>
+          </div>
+          <div class="password-input-wrap">
+            <input type="password" class="form-input" id="login-password" placeholder="••••••••••••" required autocomplete="current-password" />
+            <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('login-password', this)" title="Show/Hide password">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="flex-between mb-20">
+          <label class="checkbox-label">
+            <input type="checkbox" class="custom-checkbox" id="login-remember" checked />
+            <span>Remember me</span>
+          </label>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-full btn-lg mb-16" id="login-submit-btn">
+          Sign In
+        </button>
+
+        <p class="text-center text-xs text-muted">
+          Don't have an account? <span class="text-accent pointer font-bold" onclick="switchAuthTab('register')">Create an account</span>
+        </p>
+      </form>
+
+      <!-- CREATE ACCOUNT FORM -->
+      <form id="register-form" class="hidden" onsubmit="handleRegisterSubmit(event)">
+        <div class="form-group">
+          <label class="form-label">Full Name</label>
+          <input type="text" class="form-input" id="reg-name" placeholder="Alex Morgan" required autocomplete="name" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Email Address</label>
+          <input type="email" class="form-input" id="reg-email" placeholder="you@example.com" required autocomplete="email" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <div class="password-input-wrap">
+            <input type="password" class="form-input" id="reg-password" placeholder="Min 6 characters" required minlength="6" oninput="checkPasswordStrength(this.value)" autocomplete="new-password" />
+            <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('reg-password', this)" title="Show/Hide password">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+
+          <!-- Password Strength Indicator -->
+          <div class="password-strength-container" id="password-strength-box">
+            <div class="strength-bars">
+              <div class="strength-segment" id="str-bar-1"></div>
+              <div class="strength-segment" id="str-bar-2"></div>
+              <div class="strength-segment" id="str-bar-3"></div>
+              <div class="strength-segment" id="str-bar-4"></div>
+            </div>
+            <div class="strength-label">
+              <span>Strength: <strong id="str-label-text">None</strong></span>
+              <span>6+ chars, numbers & letters</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Confirm Password</label>
+          <div class="password-input-wrap">
+            <input type="password" class="form-input" id="reg-confirm-password" placeholder="Repeat password" required minlength="6" autocomplete="new-password" />
+            <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('reg-confirm-password', this)" title="Show/Hide password">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="mb-16">
+          <label class="checkbox-label">
+            <input type="checkbox" class="custom-checkbox" id="reg-agree" required />
+            <span class="text-xs">I agree to the Terms of Service & Privacy Policy</span>
+          </label>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-full btn-lg mb-16" id="register-submit-btn">
+          Create Account
+        </button>
+
+        <p class="text-center text-xs text-muted">
+          Already have an account? <span class="text-accent pointer font-bold" onclick="switchAuthTab('login')">Sign In</span>
+        </p>
+      </form>
+
+      <!-- FORGOT PASSWORD FORM -->
+      <form id="forgot-form" class="hidden" onsubmit="handleForgotSubmit(event)">
+        <div class="flex-between mb-16">
+          <button type="button" class="btn btn-ghost btn-sm" onclick="switchAuthTab('login')" style="padding:4px 8px;">
+            ← Back to Sign In
+          </button>
+          <span class="hud-tag">Password Reset</span>
+        </div>
+
+        <div id="forgot-step-1">
+          <h3 class="mb-4" style="font-size:16px;font-weight:600;">Reset Password</h3>
+          <p class="text-xs text-secondary mb-16">
+            Enter your registered email address to receive your 6-digit verification code.
+          </p>
+
+          <div class="form-group">
+            <label class="form-label">Email Address</label>
+            <input type="email" class="form-input" id="forgot-email" placeholder="you@example.com" required autocomplete="email" />
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-full mb-16" id="forgot-send-btn">
+            Send 6-Digit Code
+          </button>
+
+          <div style="padding:10px 12px;background:var(--accent-dim);border:1px solid var(--border);border-radius:var(--radius-sm);">
+            <p class="text-xs text-secondary">
+              💡 <strong>Demo Mode:</strong> The verification code will be displayed on screen immediately for easy testing.
+            </p>
+          </div>
+        </div>
+
+        <div id="forgot-step-2" class="hidden">
+          <h3 class="mb-4" style="font-size:16px;font-weight:600;color:var(--green);">Enter Verification Code</h3>
+          <p class="text-xs text-secondary mb-16">
+            Enter the 6-digit code sent to your email and your new password.
+          </p>
+
+          <div class="form-group">
+            <label class="form-label">6-Digit Code</label>
+            <input type="text" class="form-input font-bold" id="forgot-code" placeholder="123456" maxlength="6" required style="letter-spacing:0.2em;font-size:16px;text-align:center;" />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">New Password</label>
+            <div class="password-input-wrap">
+              <input type="password" class="form-input" id="forgot-new-password" placeholder="Min 6 characters" required minlength="6" />
+              <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('forgot-new-password', this)" title="Show/Hide password">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <button type="button" class="btn btn-primary btn-full mb-12" id="forgot-reset-btn" onclick="handleResetPasswordSubmit()">
+            Update Password & Sign In
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
 <!-- APP LAYOUT                                 -->
 <!-- ══════════════════════════════════════════ -->
-<div id="app-layout" class="app-layout">
+<div id="app-layout" class="app-layout hidden">
 
-  <!-- ── CYBER SIDEBAR ── -->
+  <!-- ── SIDEBAR ── -->
   <aside class="sidebar">
     <div class="sidebar-header">
-      <div class="sidebar-logo">⚡</div>
+      <div class="sidebar-logo">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+          <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+        </svg>
+      </div>
       <div class="sidebar-brand">
         STUDY PLANNER
-        <span>AI QUANTUM CORE</span>
+        <span>Smart AI Companion</span>
       </div>
     </div>
 
-    <div style="padding:10px 16px 0;">
-      <span class="hud-tag"><span class="hud-dot pulsing"></span> SYSTEM ONLINE</span>
-    </div>
-
     <nav class="sidebar-nav">
-      <div class="nav-section-title">Navigation</div>
+      <div class="nav-section-title">Overview</div>
       <a class="nav-item active" data-page="dashboard" onclick="navigateTo('dashboard')">
-        <span class="nav-icon">🏠</span> Dashboard
+        <span class="nav-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        </span>
+        Dashboard
       </a>
       <a class="nav-item" data-page="tasks" onclick="navigateTo('tasks')">
-        <span class="nav-icon">✅</span> Tasks
+        <span class="nav-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m9 12 2 2 4-4"/></svg>
+        </span>
+        Tasks
         <span class="nav-badge" id="task-badge">0</span>
       </a>
       <a class="nav-item" data-page="planner" onclick="navigateTo('planner')">
-        <span class="nav-icon">📅</span> AI Planner
+        <span class="nav-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
+        </span>
+        Study Planner
       </a>
       <a class="nav-item" data-page="timer" onclick="navigateTo('timer')">
-        <span class="nav-icon">⏱️</span> Focus Reactor
+        <span class="nav-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </span>
+        Focus Timer
       </a>
       <a class="nav-item" data-page="calendar" onclick="navigateTo('calendar')">
-        <span class="nav-icon">📆</span> Calendar
+        <span class="nav-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/><path d="M16 18h.01"/></svg>
+        </span>
+        Calendar
       </a>
 
-      <div class="nav-section-title">AI Neural Tools</div>
+      <div class="nav-section-title">AI Study Tools</div>
       <a class="nav-item" data-page="summarizer" onclick="navigateTo('summarizer')">
-        <span class="nav-icon">⚡</span> AI Synthesizer
+        <span class="nav-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/></svg>
+        </span>
+        Summarize Notes
       </a>
       <a class="nav-item" data-page="chat" onclick="navigateTo('chat')">
-        <span class="nav-icon">🤖</span> AI StudyBot
+        <span class="nav-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        </span>
+        Ask AI Tutor
       </a>
       <a class="nav-item" data-page="flashcards" onclick="navigateTo('flashcards')">
-        <span class="nav-icon">🃏</span> Flashcards
+        <span class="nav-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="14" x="3" y="5" rx="2"/><line x1="7" x2="7" y1="5" y2="19"/></svg>
+        </span>
+        Flashcards
       </a>
 
-      <div class="nav-section-title">Intelligence</div>
+      <div class="nav-section-title">Progress</div>
       <a class="nav-item" data-page="analytics" onclick="navigateTo('analytics')">
-        <span class="nav-icon">📊</span> Analytics
+        <span class="nav-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" x2="18" y1="20" y2="10"/><line x1="12" x2="12" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="14"/></svg>
+        </span>
+        Progress & Stats
       </a>
       <a class="nav-item" data-page="settings" onclick="navigateTo('settings')">
-        <span class="nav-icon">⚙️</span> Settings
+        <span class="nav-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+        </span>
+        Settings
       </a>
     </nav>
 
@@ -94,10 +316,14 @@
       <div class="user-card" onclick="navigateTo('settings')">
         <div class="user-avatar" id="sidebar-avatar">U</div>
         <div class="user-info">
-          <div class="user-name" id="sidebar-username">Explorer</div>
-          <div class="user-email" id="sidebar-email">agent@synapse.ai</div>
+          <div class="user-name" id="sidebar-username">Student</div>
+          <div class="user-email" id="sidebar-email">student@example.com</div>
         </div>
       </div>
+      <button class="btn btn-ghost btn-sm btn-full mt-8" onclick="logout()" title="Sign Out" style="font-size:12px;padding:6px 8px;display:flex;align-items:center;justify-content:center;gap:6px;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
+        <span>Sign Out</span>
+      </button>
     </div>
   </aside>
 
@@ -106,111 +332,116 @@
 
     <!-- Topbar -->
     <header class="topbar">
-      <button class="btn btn-ghost btn-icon" id="mobile-menu-btn" onclick="toggleMobileSidebar(true)" style="display:none;" title="Open Navigation">
-        ☰
+      <button class="btn btn-ghost btn-icon" id="mobile-menu-btn" onclick="toggleMobileSidebar(true)" style="display:none;" title="Open Menu">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" x2="21" y1="6" y2="6"/><line x1="3" x2="21" y1="12" y2="12"/><line x1="3" x2="21" y1="18" y2="18"/></svg>
       </button>
-      <h1 class="topbar-title" id="topbar-title">🏠 Mission Dashboard</h1>
+      <h1 class="topbar-title" id="topbar-title">Dashboard</h1>
 
-      <!-- Omnibar Search Trigger -->
-      <button class="omnibar-btn" onclick="openOmnibar()" title="Open Command Palette">
-        <span>⚡ Command Center</span>
+      <!-- Quick Search Trigger -->
+      <button class="omnibar-btn" onclick="openOmnibar()" title="Search or jump to page">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/></svg>
+        <span>Quick Search</span>
         <kbd>Ctrl+K</kbd>
       </button>
 
       <div class="topbar-actions">
-        <!-- SFX Audio Toggle -->
-        <button class="btn btn-ghost btn-icon" id="sfx-toggle" onclick="toggleSFXMute()" title="Toggle Cyber SFX">🔊</button>
+        <!-- Audio Chime Toggle -->
+        <button class="btn btn-ghost btn-icon" id="sfx-toggle" onclick="toggleSFXMute()" title="Toggle Sound">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+        </button>
         <!-- Theme Toggle -->
-        <button class="btn btn-ghost btn-icon" id="theme-toggle" onclick="toggleTheme()" title="Toggle Theme">☀️</button>
-        <!-- Quick New Task -->
-        <button class="btn btn-primary btn-sm" onclick="showModal('task-modal')">+ New Mission</button>
+        <button class="btn btn-ghost btn-icon" id="theme-toggle" onclick="toggleTheme()" title="Toggle Dark/Light Mode">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" x2="12" y1="1" y2="3"/><line x1="12" x2="12" y1="21" y2="23"/><line x1="4.22" x2="5.64" y1="4.22" y2="5.64"/><line x1="18.36" x2="19.78" y1="18.36" y2="19.78"/><line x1="1" x2="3" y1="12" y2="12"/><line x1="21" x2="23" y1="12" y2="12"/><line x1="4.22" x2="5.64" y1="19.78" y2="18.36"/><line x1="18.36" x2="19.78" y1="5.64" y2="4.22"/></svg>
+        </button>
+        <!-- Quick Add Task -->
+        <button class="btn btn-primary btn-sm" onclick="showModal('task-modal')">+ Add Task</button>
+        <!-- Sign Out -->
+        <button class="btn btn-ghost btn-sm" onclick="logout()" title="Sign Out">Sign Out</button>
       </div>
     </header>
 
     <!-- ══ PAGE: DASHBOARD ══ -->
     <section id="page-dashboard" class="page-section active page-content">
 
-      <!-- Holographic Welcome Banner -->
-      <div class="card card-hud mb-24" style="background:linear-gradient(135deg,rgba(0,240,255,0.08),rgba(139,92,246,0.12));overflow:hidden;">
-        <div style="position:relative;z-index:2;">
-          <div class="flex-between mb-8">
-            <span class="hud-tag">QUANTUM MOTIVATION FEED</span>
-            <span class="text-xs text-muted font-mono" id="current-date-hud">MISSION ACTIVE</span>
-          </div>
-          <div id="motivation-text" class="font-display" style="font-size:16px;font-weight:600;color:var(--text-primary);margin-bottom:14px;line-height:1.5;">
-            Synthesizing your cognitive motivation...
-          </div>
-          <div class="flex gap-12" style="flex-wrap:wrap;">
-            <button class="btn btn-primary btn-sm" onclick="navigateTo('planner')">✨ AI Study Plan</button>
-            <button class="btn btn-secondary btn-sm" onclick="navigateTo('timer')">⏱️ Focus Reactor</button>
-            <button class="btn btn-secondary btn-sm" onclick="navigateTo('summarizer')">⚡ Synthesize Notes</button>
-            <button class="btn btn-secondary btn-sm" onclick="showModal('task-modal')">+ Deploy Task</button>
-          </div>
+      <!-- Welcome & Daily Motivation Card -->
+      <div class="card mb-24" style="background:linear-gradient(135deg, var(--bg-surface), var(--bg-elevated));">
+        <div class="flex-between mb-8">
+          <span class="hud-tag">Daily Study Tip</span>
+          <span class="text-xs text-muted" id="current-date-hud">Today</span>
+        </div>
+        <div id="motivation-text" style="font-size:16px;font-weight:600;color:var(--text-primary);margin-bottom:14px;line-height:1.5;">
+          Welcome! What would you like to study today?
+        </div>
+        <div class="flex gap-12" style="flex-wrap:wrap;">
+          <button class="btn btn-primary btn-sm" onclick="navigateTo('planner')">📅 AI Study Schedule</button>
+          <button class="btn btn-secondary btn-sm" onclick="navigateTo('timer')">⏱️ Start Focus Timer</button>
+          <button class="btn btn-secondary btn-sm" onclick="navigateTo('summarizer')">⚡ Summarize Notes</button>
+          <button class="btn btn-secondary btn-sm" onclick="showModal('task-modal')">+ Add Task</button>
         </div>
       </div>
 
       <!-- Stats Grid -->
       <div class="stats-grid">
-        <div class="stat-card blue">
-          <div class="stat-icon blue">⚡</div>
+        <div class="stat-card">
+          <div class="stat-icon" style="color:var(--accent);">⏱️</div>
           <div class="stat-value" id="dash-hours">0</div>
-          <div class="stat-label">Hours Invested</div>
-          <div class="stat-change">↑ Quantum Lifetime</div>
+          <div class="stat-label">Hours Studied</div>
+          <div class="stat-change">Total time focused</div>
         </div>
-        <div class="stat-card green">
-          <div class="stat-icon green">✅</div>
+        <div class="stat-card">
+          <div class="stat-icon" style="color:var(--green);">✅</div>
           <div class="stat-value" id="dash-tasks">0</div>
-          <div class="stat-label">Missions Completed</div>
-          <div class="stat-change">↑ Total Solved</div>
+          <div class="stat-label">Tasks Completed</div>
+          <div class="stat-change">Finished study tasks</div>
         </div>
-        <div class="stat-card yellow">
-          <div class="stat-icon yellow">🔥</div>
+        <div class="stat-card">
+          <div class="stat-icon" style="color:var(--yellow);">🔥</div>
           <div class="stat-value" id="dash-streak">0</div>
-          <div class="stat-label">Synaptic Streak</div>
-          <div class="stat-change">Continuous Days</div>
+          <div class="stat-label">Study Streak</div>
+          <div class="stat-change">Consecutive days</div>
         </div>
-        <div class="stat-card purple">
-          <div class="stat-icon purple">⏱️</div>
-          <div class="stat-value">25</div>
-          <div class="stat-label">Standard Reactor (m)</div>
-          <div class="stat-change">Pomodoro Standard</div>
+        <div class="stat-card">
+          <div class="stat-icon" style="color:var(--purple);">🎯</div>
+          <div class="stat-value">25m</div>
+          <div class="stat-label">Focus Interval</div>
+          <div class="stat-change">Standard Pomodoro</div>
         </div>
       </div>
 
-      <!-- Grid: Tasks + Countdown/Alerts -->
+      <!-- Grid: Tasks + Countdown & Reminder -->
       <div class="grid-2">
         <!-- Recent Tasks -->
-        <div class="card card-hud">
+        <div class="card">
           <div class="card-title flex-between">
-            <span>📋 Active Task Matrix</span>
-            <button class="btn btn-ghost btn-sm" onclick="navigateTo('tasks')">Matrix View →</button>
+            <span>📋 Today's Tasks</span>
+            <button class="btn btn-ghost btn-sm" onclick="navigateTo('tasks')">View all tasks →</button>
           </div>
           <div id="recent-tasks">
             <div class="flex-center" style="padding:32px;"><div class="spinner"></div></div>
           </div>
         </div>
 
-        <!-- Target Mission Countdown & Alarms -->
+        <!-- Upcoming Exam Countdown & Reminders -->
         <div>
-          <div class="card card-hud mb-20">
-            <div class="card-title">⏳ Mission Target Countdown</div>
+          <div class="card mb-20">
+            <div class="card-title">⏳ Upcoming Exam Countdown</div>
             <div class="grid-2 mb-12">
-              <input type="text" class="form-input" id="exam-name-input" placeholder="Mission Target (e.g. Finals)" />
+              <input type="text" class="form-input" id="exam-name-input" placeholder="Exam / Subject (e.g. Finals)" />
               <input type="date" class="form-input" id="exam-date-input" />
             </div>
-            <button class="btn btn-secondary btn-full btn-sm mb-16" onclick="saveExamDate()">Lock In Mission Date →</button>
+            <button class="btn btn-secondary btn-full btn-sm mb-16" onclick="saveExamDate()">Save Exam Date</button>
             <div id="exam-countdown"></div>
           </div>
 
-          <div class="card card-hud">
-            <div class="card-title">🔔 Quick Study Alert</div>
+          <div class="card">
+            <div class="card-title">🔔 Quick Study Reminder</div>
             <div class="form-group mb-8">
-              <input type="text" class="form-input" id="quick-alarm-title" placeholder="Session Objective" />
+              <input type="text" class="form-input" id="quick-alarm-title" placeholder="Reminder title (e.g. Review Biology chapter 3)" />
             </div>
             <div class="form-group mb-12">
               <input type="datetime-local" class="form-input" id="quick-alarm-time" />
             </div>
-            <button class="btn btn-primary btn-full btn-sm" onclick="setQuickAlarm()">Schedule Alert 🔔</button>
+            <button class="btn btn-primary btn-full btn-sm" onclick="setQuickAlarm()">Set Reminder 🔔</button>
             <div id="alarms-list" class="mt-12"></div>
           </div>
         </div>
@@ -221,16 +452,16 @@
     <section id="page-tasks" class="page-section page-content">
       <div class="flex-between mb-20" style="flex-wrap:wrap;gap:12px;">
         <div class="flex gap-8" style="flex-wrap:wrap;">
-          <button class="btn btn-secondary btn-sm task-filter active" data-filter="" onclick="filterTasks(this, '')">All Matrix</button>
+          <button class="btn btn-secondary btn-sm task-filter active" data-filter="" onclick="filterTasks(this, '')">All Tasks</button>
           <button class="btn btn-secondary btn-sm task-filter" data-filter="pending" onclick="filterTasks(this, 'pending')">Pending</button>
           <button class="btn btn-secondary btn-sm task-filter" data-filter="in-progress" onclick="filterTasks(this, 'in-progress')">In Progress</button>
           <button class="btn btn-secondary btn-sm task-filter" data-filter="completed" onclick="filterTasks(this, 'completed')">Completed</button>
         </div>
-        <button class="btn btn-primary btn-sm" onclick="showModal('task-modal')">+ Create Task</button>
+        <button class="btn btn-primary btn-sm" onclick="showModal('task-modal')">+ Add Task</button>
       </div>
 
       <div class="form-group mb-16">
-        <input type="search" class="form-input" id="task-search" placeholder="🔍 Search tasks, topics, tags..." oninput="searchTasks(this.value)" />
+        <input type="search" class="form-input" id="task-search" placeholder="🔍 Search tasks, subjects, or tags..." oninput="searchTasks(this.value)" />
       </div>
 
       <div id="tasks-list">
@@ -242,15 +473,15 @@
     <section id="page-planner" class="page-section page-content">
       <div class="grid-2">
         <div>
-          <div class="card card-hud mb-20">
-            <div class="card-title">✨ Generate AI Study Plan</div>
+          <div class="card mb-20">
+            <div class="card-title">📅 Create Study Schedule</div>
             <form id="planner-form" onsubmit="handlePlannerSubmit(event)">
               <div class="form-group">
                 <label class="form-label">Target Exam Date</label>
                 <input type="date" class="form-input" id="plan-exam-date" required />
               </div>
               <div class="form-group">
-                <label class="form-label">Daily Available Focus Hours</label>
+                <label class="form-label">Available Study Hours per Day</label>
                 <select class="form-select" id="plan-daily-hours">
                   <option value="1">1 hour / day</option>
                   <option value="2">2 hours / day</option>
@@ -262,88 +493,87 @@
               </div>
 
               <div class="form-group">
-                <label class="form-label">Curriculum Subjects</label>
+                <label class="form-label">Subjects to Study</label>
                 <div id="subjects-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px;"></div>
                 <button type="button" class="btn btn-secondary btn-sm btn-full" onclick="addSubjectField()">+ Add Subject</button>
               </div>
 
               <button type="submit" class="btn btn-primary btn-full">
-                ✨ Synthesize Study Blueprint
+                ✨ Generate Study Schedule
               </button>
             </form>
           </div>
 
-          <div class="card card-hud">
-            <div class="card-title">📚 Saved Blueprints</div>
+          <div class="card">
+            <div class="card-title">📚 Saved Study Plans</div>
             <div id="saved-plans-list">
-              <p class="text-sm text-muted">Retrieving cached plans...</p>
+              <p class="text-sm text-muted">No saved study plans yet.</p>
             </div>
           </div>
         </div>
 
         <div id="study-plan-result">
-          <div class="card card-hud" style="text-align:center;padding:48px;">
-            <div style="font-size:48px;margin-bottom:16px;">🤖</div>
-            <h3 class="font-hud" style="font-size:18px;margin-bottom:8px;">AI Quantum Study Planner</h3>
-            <p class="text-secondary text-sm">Configure your exam targets and let the AI neural engine formulate your optimized daily schedules, learning strategies, and revision matrix.</p>
+          <div class="card" style="text-align:center;padding:48px;">
+            <div style="font-size:42px;margin-bottom:14px;">📅</div>
+            <h3 style="font-size:17px;font-weight:600;margin-bottom:8px;">AI Study Schedule Generator</h3>
+            <p class="text-secondary text-sm">Add your exam date and subjects to get a personalized day-by-day study timetable tailored to your schedule.</p>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- ══ PAGE: TIMER (FOCUS REACTOR & CYBER SOUNDSCAPE) ══ -->
+    <!-- ══ PAGE: TIMER (POMODORO) ══ -->
     <section id="page-timer" class="page-section page-content">
       <div class="grid-2">
-        <div class="card card-hud">
+        <div class="card">
           <div class="timer-modes">
-            <button class="timer-mode-btn active" data-mode="pomodoro" onclick="setTimerMode('pomodoro')">Pomodoro</button>
-            <button class="timer-mode-btn" data-mode="short-break" onclick="setTimerMode('short-break')">Short Break</button>
-            <button class="timer-mode-btn" data-mode="long-break" onclick="setTimerMode('long-break')">Long Break</button>
+            <button class="timer-mode-btn active" data-mode="pomodoro" onclick="setTimerMode('pomodoro')">Pomodoro (25m)</button>
+            <button class="timer-mode-btn" data-mode="short-break" onclick="setTimerMode('short-break')">Short Break (5m)</button>
+            <button class="timer-mode-btn" data-mode="long-break" onclick="setTimerMode('long-break')">Long Break (15m)</button>
           </div>
 
           <div class="timer-container">
             <div class="timer-ring">
               <svg viewBox="0 0 220 220">
-                <circle cx="110" cy="110" r="90" fill="none" stroke="var(--bg-elevated)" stroke-width="10"/>
+                <circle cx="110" cy="110" r="90" fill="none" stroke="var(--bg-elevated)" stroke-width="8"/>
                 <circle id="timer-progress-circle" cx="110" cy="110" r="90"
                   fill="none"
                   stroke="var(--accent)"
-                  stroke-width="10"
+                  stroke-width="8"
                   stroke-linecap="round"
                   stroke-dasharray="565.48"
                   stroke-dashoffset="565.48"
-                  style="transition:stroke-dashoffset 1s linear;filter:drop-shadow(0 0 12px var(--accent-glow));"
+                  style="transition:stroke-dashoffset 1s linear;"
                 />
               </svg>
               <div class="timer-display">
                 <div class="timer-time" id="timer-time">25:00</div>
-                <div class="timer-label" id="timer-mode-label">Hyper-Focus Core</div>
+                <div class="timer-label" id="timer-mode-label">Study Focus</div>
               </div>
             </div>
 
             <div class="form-group mb-16" style="width:100%;">
-              <input type="text" class="form-input" id="timer-subject" placeholder="Current Focus Topic (e.g. Physics Quantum Mechanics)" />
+              <input type="text" class="form-input" id="timer-subject" placeholder="What are you studying? (e.g. Physics Chapter 4)" />
             </div>
 
             <div class="timer-controls">
-              <button id="timer-start-btn" class="btn btn-primary btn-lg" onclick="startTimer()">▶ Engage Reactor</button>
-              <button id="timer-pause-btn" class="btn btn-secondary btn-lg" onclick="pauseTimer()" style="display:none;">⏸ Pause Reactor</button>
+              <button id="timer-start-btn" class="btn btn-primary btn-lg" onclick="startTimer()">▶ Start Timer</button>
+              <button id="timer-pause-btn" class="btn btn-secondary btn-lg" onclick="pauseTimer()" style="display:none;">⏸ Pause</button>
               <button class="btn btn-ghost btn-lg" onclick="stopTimer()">⏹ Reset</button>
             </div>
           </div>
 
-          <!-- Futuristic Soundscape Generator Widget -->
+          <!-- Ambient Background Sounds -->
           <div class="soundscape-card">
             <div class="flex-between mb-12">
               <div class="flex items-center gap-8">
                 <span style="font-size:18px;">🎵</span>
                 <div>
-                  <div class="font-hud text-sm text-accent">BINAURAL FOCUS SOUNDSCAPE</div>
-                  <div class="text-xs text-muted" id="soundscape-status-text">Soundscape Inactive</div>
+                  <div class="text-sm font-bold">Focus Background Sounds</div>
+                  <div class="text-xs text-muted" id="soundscape-status-text">Sound Off</div>
                 </div>
               </div>
               <div class="eq-bars paused" id="soundscape-eq">
-                <div class="eq-bar"></div>
                 <div class="eq-bar"></div>
                 <div class="eq-bar"></div>
                 <div class="eq-bar"></div>
@@ -353,10 +583,10 @@
 
             <div class="grid-2 mb-12">
               <select class="form-select" id="soundscape-select" onchange="if(AppState.soundscape.active) CyberAudio.toggleSoundscape(this.value)">
-                <option value="alpha">🧠 432Hz Alpha Waves (Deep Learning)</option>
-                <option value="rain">🌧️ Cyber Rain (Pink Noise Concentration)</option>
-                <option value="drone">🌌 Cosmic Drone (Zero Distractions)</option>
-                <option value="gamma">⚡ 40Hz Gamma Focus (High Problem Solving)</option>
+                <option value="alpha">🧠 Calm Focus Tone (Alpha Waves)</option>
+                <option value="rain">🌧️ Gentle Rain</option>
+                <option value="drone">🌌 Ambient White Noise</option>
+                <option value="gamma">⚡ Deep Concentration Tone</option>
               </select>
               <button class="btn btn-secondary btn-sm" id="soundscape-toggle-btn" onclick="CyberAudio.toggleSoundscape(document.getElementById('soundscape-select').value)">
                 ▶ Play Focus Audio
@@ -364,17 +594,17 @@
             </div>
 
             <div class="flex items-center gap-12">
-              <span class="text-xs text-muted font-mono">VOLUME:</span>
+              <span class="text-xs text-muted">Volume:</span>
               <input type="range" min="0.05" max="0.9" step="0.05" value="0.35" style="flex:1;accent-color:var(--accent);" oninput="CyberAudio.setVolume(parseFloat(this.value))" />
             </div>
           </div>
         </div>
 
         <div>
-          <div class="card card-hud mb-16">
-            <div class="card-title">⚙️ Reactor Configuration</div>
+          <div class="card mb-16">
+            <div class="card-title">⚙️ Timer Durations</div>
             <div class="form-group">
-              <label class="form-label">Pomodoro Interval (minutes)</label>
+              <label class="form-label">Study Interval (minutes)</label>
               <input type="number" class="form-input" id="pomodoro-length" value="25" min="5" max="90" onchange="updatePomodoroDuration()" />
             </div>
             <div class="form-group">
@@ -387,14 +617,14 @@
             </div>
           </div>
 
-          <div class="card card-hud">
-            <div class="card-title">📊 Today's Synaptic Focus</div>
+          <div class="card">
+            <div class="card-title">📊 Today's Focus Summary</div>
             <div class="stats-grid" style="grid-template-columns:1fr 1fr;gap:12px;">
-              <div class="stat-card blue" style="padding:14px;">
+              <div class="stat-card" style="padding:14px;">
                 <div class="stat-value" id="today-sessions" style="font-size:22px;">0</div>
                 <div class="stat-label">Sessions Completed</div>
               </div>
-              <div class="stat-card green" style="padding:14px;">
+              <div class="stat-card" style="padding:14px;">
                 <div class="stat-value" id="today-minutes" style="font-size:22px;">0</div>
                 <div class="stat-label">Focused Minutes</div>
               </div>
@@ -404,58 +634,85 @@
       </div>
     </section>
 
-    <!-- ══ PAGE: AI NOTES SYNTHESIZER (NEW FUTURISTIC FEATURE) ══ -->
+    <!-- ══ PAGE: NOTES SUMMARIZER ══ -->
     <section id="page-summarizer" class="page-section page-content">
       <div class="grid-2">
-        <div class="card card-hud">
-          <div class="flex-between mb-16">
-            <div class="card-title" style="margin-bottom:0;">⚡ AI Notes Synthesizer</div>
-            <span class="synthesizer-badge">NEURAL DECODER</span>
-          </div>
+        <div class="card">
+          <div class="card-title">⚡ Summarize Notes</div>
 
           <p class="text-secondary text-sm mb-16">
-            Paste unstructured lecture notes, book excerpts, or complex research. The AI neural engine will synthesize it into high-impact study materials.
+            Paste your lecture notes, textbook chapters, or study guides below to get clean bullet points, key definitions, and exam summaries.
           </p>
 
           <div class="form-group">
-            <label class="form-label">Topic / Subject Header</label>
-            <input type="text" class="form-input" id="synth-topic" placeholder="e.g. Molecular Biology - Cellular Respiration" />
+            <label class="form-label">Subject / Topic</label>
+            <input type="text" class="form-input" id="synth-topic" placeholder="e.g. Biology - Cell Respiration" />
           </div>
 
           <div class="form-group">
-            <label class="form-label">Synthesis Mode</label>
+            <label class="form-label">Summary Format</label>
             <select class="form-select" id="synth-style">
-              <option value="concise">⚡ Quantum Executive Brief</option>
-              <option value="bullet-matrix">📋 Key Matrix Bullet Points</option>
+              <option value="concise">📌 Concise Key Points</option>
+              <option value="bullet-matrix">📋 Bullet Point Breakdown</option>
               <option value="exam-prep">🎯 High-Yield Exam Cheat Sheet</option>
-              <option value="roadmap">🗺️ Step-by-Step Study Roadmap</option>
+              <option value="roadmap">🗺️ Step-by-Step Study Guide</option>
             </select>
           </div>
 
           <div class="form-group">
-            <label class="form-label">Source Notes Text</label>
-            <textarea class="form-textarea" id="synth-input-text" placeholder="Paste your rough lecture notes, textbook passages, or transcripts here..." style="min-height:160px;"></textarea>
+            <div class="flex-between mb-8 items-center">
+              <label class="form-label" style="margin-bottom:0;">Your Notes or Scanned Document</label>
+              <div class="flex gap-8">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="openCameraScanner()" style="display:flex;align-items:center;gap:6px;font-size:12px;padding:5px 10px;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                  <span>Camera Scan</span>
+                </button>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('scan-file-input').click()" style="display:flex;align-items:center;gap:6px;font-size:12px;padding:5px 10px;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+                  <span>Upload Photo</span>
+                </button>
+                <input type="file" id="scan-file-input" accept="image/*" capture="environment" style="display:none;" onchange="handleScannedFile(event)" />
+              </div>
+            </div>
+
+            <!-- Attached Scanned Note Card -->
+            <div id="attached-scan-badge" class="hidden mb-12" style="background:var(--bg-elevated);border:1px solid var(--accent);border-radius:var(--radius-sm);padding:8px 12px;display:flex;align-items:center;gap:12px;">
+              <img id="attached-scan-thumb" src="" alt="Scanned Note" style="width:48px;height:48px;object-fit:cover;border-radius:4px;border:1px solid var(--border);" />
+              <div style="flex:1;min-width:0;">
+                <div class="text-xs font-bold text-primary flex items-center gap-6">
+                  <span style="color:var(--green);">✓</span> Scanned Note Attached
+                </div>
+                <div class="text-xs text-secondary truncate" id="attached-scan-desc">Ready for AI Vision analysis</div>
+              </div>
+              <button type="button" class="btn btn-ghost btn-sm" onclick="removeAttachedScannedImage()" title="Remove photo" style="color:var(--red);padding:4px 8px;">✕</button>
+            </div>
+
+            <textarea class="form-textarea" id="synth-input-text" placeholder="Type or paste your notes here, or click 'Camera Scan' to photograph textbook pages or handwritten notes..." style="min-height:140px;"></textarea>
           </div>
 
           <button class="btn btn-primary btn-full" id="synth-submit-btn" onclick="handleSynthesizeNotes()">
-            ⚡ Synthesize Notes
+            ⚡ Summarize Notes
           </button>
         </div>
 
         <div>
-          <div class="card card-hud">
-            <div class="flex-between mb-12">
-              <div class="card-title" style="margin-bottom:0;">📋 Synthesized Output</div>
+          <div class="card">
+            <div class="flex-between mb-12 items-center">
+              <div class="card-title" style="margin-bottom:0;">📋 Summary Results</div>
               <div class="flex gap-8 hidden" id="synth-actions-bar">
-                <button class="btn btn-secondary btn-sm" onclick="copySynthesizedNotes()">📋 Copy</button>
-                <button class="btn btn-primary btn-sm" onclick="exportSummaryToTasks()">+ Add to Tasks</button>
+                <button class="btn btn-secondary btn-sm" onclick="copySynthesizedNotes()" title="Copy to clipboard">📋 Copy</button>
+                <button class="btn btn-primary btn-sm" onclick="downloadSummaryPDF()" title="Export summary as PDF" style="display:flex;align-items:center;gap:6px;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                  <span>Download PDF</span>
+                </button>
+                <button class="btn btn-secondary btn-sm" onclick="exportSummaryToTasks()">+ Add to Tasks</button>
               </div>
             </div>
 
-            <div class="cyber-output-box" id="synth-output">
-              <div class="flex-center" style="min-height:220px;text-align:center;flex-direction:column;gap:12px;">
-                <span style="font-size:36px;">⚡</span>
-                <p class="text-secondary text-sm">Ready to decode. Enter lecture notes on the left and engage synthesis.</p>
+            <div class="p-16 rounded" id="synth-output" style="background:var(--bg-elevated);min-height:240px;">
+              <div class="flex-center" style="min-height:200px;text-align:center;flex-direction:column;gap:10px;">
+                <span style="font-size:32px;">📝</span>
+                <p class="text-secondary text-sm">Your summarized notes and key takeaways will appear here.</p>
               </div>
             </div>
           </div>
@@ -465,37 +722,37 @@
 
     <!-- ══ PAGE: CALENDAR ══ -->
     <section id="page-calendar" class="page-section page-content">
-      <div class="card card-hud">
+      <div class="card">
         <div class="flex-between mb-20">
-          <button class="btn btn-secondary btn-sm" onclick="changeCalMonth(-1)">← Prev Month</button>
-          <h2 class="font-hud text-accent" id="calendar-title" style="font-size:16px;">Month Year</h2>
-          <button class="btn btn-secondary btn-sm" onclick="changeCalMonth(1)">Next Month →</button>
+          <button class="btn btn-secondary btn-sm" onclick="changeCalMonth(-1)">← Previous</button>
+          <h2 id="calendar-title" style="font-size:16px;font-weight:600;">Month Year</h2>
+          <button class="btn btn-secondary btn-sm" onclick="changeCalMonth(1)">Next →</button>
         </div>
         <div id="calendar-grid" class="calendar-grid"></div>
       </div>
     </section>
 
-    <!-- ══ PAGE: AI CHAT ══ -->
+    <!-- ══ PAGE: AI CHAT / TUTOR ══ -->
     <section id="page-chat" class="page-section page-content" style="padding-bottom:0;">
       <div class="chat-container">
         <div class="chat-suggestions">
-          <div class="chat-suggestion" onclick="chatSuggestion('Explain the Pomodoro technique with quantum focus')">💡 Quantum Focus</div>
-          <div class="chat-suggestion" onclick="chatSuggestion('Create 5 rapid-fire exam questions on photosynthesis')">📝 Practice Quiz</div>
-          <div class="chat-suggestion" onclick="chatSuggestion('Formulate a high-retention spaced repetition schedule')">🧠 Spaced Repetition</div>
-          <div class="chat-suggestion" onclick="chatSuggestion('How to master complex topics using the Feynman technique?')">🎯 Feynman Technique</div>
+          <div class="chat-suggestion" onclick="chatSuggestion('Give me 5 study tips for retaining difficult material')">💡 Study Tips</div>
+          <div class="chat-suggestion" onclick="chatSuggestion('Create 5 practice quiz questions on Photosynthesis')">📝 Practice Quiz</div>
+          <div class="chat-suggestion" onclick="chatSuggestion('How does Spaced Repetition work for memorization?')">🧠 Spaced Repetition</div>
+          <div class="chat-suggestion" onclick="chatSuggestion('Explain the Feynman Technique in simple steps')">🎯 Feynman Technique</div>
         </div>
 
         <div class="chat-messages" id="chat-messages">
           <div class="chat-message ai">
             <div class="chat-avatar">🤖</div>
             <div class="chat-bubble">
-              <strong class="text-accent font-hud">STUDYBOT SYNAPSE READY 🎓</strong><br><br>
-              I am your AI study copilot. I can:<br>
-              • <strong>Explain</strong> advanced concepts in digestible models<br>
-              • <strong>Generate</strong> practice exams and flashcards<br>
-              • <strong>Synthesize</strong> notes and formulas<br>
-              • <strong>Optimize</strong> your cognitive study trajectory<br><br>
-              What knowledge shall we unlock today?
+              <strong>Hello! I am your AI Study Tutor.</strong><br><br>
+              I can help you:<br>
+              • <strong>Explain</strong> complex topics in simple words<br>
+              • <strong>Generate</strong> practice quiz questions<br>
+              • <strong>Break down</strong> difficult formulas or chapters<br>
+              • <strong>Answer</strong> questions about your homework<br><br>
+              What would you like to learn today?
             </div>
           </div>
         </div>
@@ -504,12 +761,12 @@
           <textarea
             id="chat-input"
             class="chat-input"
-            placeholder="Ask StudyBot anything... (Enter to send, Shift+Enter for new line)"
+            placeholder="Ask a question about any subject... (Enter to send, Shift+Enter for new line)"
             rows="1"
             onkeydown="handleChatKeydown(event)"
             oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"
           ></textarea>
-          <button class="btn btn-primary" onclick="submitChat()" style="padding:12px 18px;">Send ↑</button>
+          <button class="btn btn-primary" onclick="submitChat()" style="padding:10px 16px;">Send ↑</button>
         </div>
       </div>
     </section>
@@ -518,18 +775,18 @@
     <section id="page-flashcards" class="page-section page-content">
       <div class="grid-2">
         <div>
-          <div class="card card-hud mb-16">
-            <div class="card-title">🃏 Holographic Card Generator</div>
+          <div class="card mb-16">
+            <div class="card-title">🃏 Create Flashcard Deck</div>
             <div class="form-group">
-              <label class="form-label">Subject / Domain</label>
-              <input type="text" class="form-input" id="fc-subject" placeholder="e.g. Astrophysics, Organic Chemistry" />
+              <label class="form-label">Subject</label>
+              <input type="text" class="form-input" id="fc-subject" placeholder="e.g. Biology, History" />
             </div>
             <div class="form-group">
-              <label class="form-label">Core Topic</label>
-              <input type="text" class="form-input" id="fc-topic" placeholder="e.g. Black Hole Thermodynamics" />
+              <label class="form-label">Topic</label>
+              <input type="text" class="form-input" id="fc-topic" placeholder="e.g. Cell Structure, World War II" />
             </div>
             <div class="form-group">
-              <label class="form-label">Deck Size</label>
+              <label class="form-label">Number of Cards</label>
               <select class="form-select" id="fc-count">
                 <option value="5">5 Cards</option>
                 <option value="10" selected>10 Cards</option>
@@ -537,11 +794,11 @@
                 <option value="20">20 Cards</option>
               </select>
             </div>
-            <button class="btn btn-primary btn-full" onclick="handleGenerateFlashcards()">✨ Compile Card Deck</button>
+            <button class="btn btn-primary btn-full" onclick="handleGenerateFlashcards()">✨ Generate Flashcards</button>
           </div>
 
-          <div class="card card-hud">
-            <div class="card-title">📚 Cached Decks</div>
+          <div class="card">
+            <div class="card-title">📚 Saved Decks</div>
             <div id="flashcard-sets">
               <div class="flex-center" style="padding:24px;"><div class="spinner"></div></div>
             </div>
@@ -550,35 +807,35 @@
 
         <div>
           <div id="flashcard-viewer" style="display:none;">
-            <div class="card card-hud mb-16">
+            <div class="card mb-16">
               <div class="flex-between mb-16">
-                <span class="text-sm font-mono text-accent" id="flashcard-count">0 / 0</span>
-                <span class="text-xs text-muted font-display">(Tap card to flip 3D face)</span>
+                <span class="text-sm font-bold" id="flashcard-count">0 / 0</span>
+                <span class="text-xs text-muted">(Click card to flip)</span>
               </div>
 
               <div class="flashcard-scene" onclick="flipFlashcard()">
                 <div class="flashcard-card" id="flashcard-inner">
                   <div class="flashcard-face flashcard-front">
-                    <div id="fc-front-text" class="text-center font-display">Prompt Front</div>
+                    <div id="fc-front-text" class="text-center">Question Front</div>
                   </div>
                   <div class="flashcard-face flashcard-back">
-                    <div id="fc-back-text" class="text-center font-display">Answer Back</div>
+                    <div id="fc-back-text" class="text-center">Answer Back</div>
                   </div>
                 </div>
               </div>
 
-              <div class="timer-controls" style="margin-top:16px;">
-                <button class="btn btn-secondary" onclick="prevFlashcard()">← Prev</button>
-                <button class="btn btn-ghost" onclick="flipFlashcard()">🔄 Flip</button>
+              <div class="timer-controls" style="margin-top:16px;justify-content:center;">
+                <button class="btn btn-secondary" onclick="prevFlashcard()">← Previous</button>
+                <button class="btn btn-ghost" onclick="flipFlashcard()">🔄 Flip Card</button>
                 <button class="btn btn-secondary" onclick="nextFlashcard()">Next →</button>
               </div>
             </div>
           </div>
 
-          <div class="card card-hud" style="text-align:center;padding:48px;" id="flashcard-empty">
-            <div style="font-size:48px;margin-bottom:16px;">🃏</div>
-            <h3 class="font-hud" style="font-size:18px;margin-bottom:8px;">Holographic Deck Standby</h3>
-            <p class="text-secondary text-sm">Synthesize a new deck from any topic using AI, then test your synaptic recall.</p>
+          <div class="card" style="text-align:center;padding:48px;" id="flashcard-empty">
+            <div style="font-size:42px;margin-bottom:14px;">🃏</div>
+            <h3 style="font-size:17px;font-weight:600;margin-bottom:8px;">No Deck Selected</h3>
+            <p class="text-secondary text-sm">Generate a new flashcard deck on the left or select a saved deck to start reviewing.</p>
           </div>
         </div>
       </div>
@@ -587,38 +844,38 @@
     <!-- ══ PAGE: ANALYTICS ══ -->
     <section id="page-analytics" class="page-section page-content">
       <div class="stats-grid mb-24">
-        <div class="stat-card blue">
-          <div class="stat-icon blue">⚡</div>
+        <div class="stat-card">
+          <div class="stat-icon" style="color:var(--accent);">⏱️</div>
           <div class="stat-value" id="analytics-total-hours">0</div>
           <div class="stat-label">Total Hours Studied</div>
         </div>
-        <div class="stat-card green">
-          <div class="stat-icon green">✅</div>
+        <div class="stat-card">
+          <div class="stat-icon" style="color:var(--green);">✅</div>
           <div class="stat-value" id="analytics-tasks-completed">0</div>
-          <div class="stat-label">Tasks Conquered</div>
+          <div class="stat-label">Tasks Completed</div>
         </div>
-        <div class="stat-card yellow">
-          <div class="stat-icon yellow">🔥</div>
+        <div class="stat-card">
+          <div class="stat-icon" style="color:var(--yellow);">🔥</div>
           <div class="stat-value" id="analytics-streak">0</div>
-          <div class="stat-label">Daily Streak Count</div>
+          <div class="stat-label">Day Streak</div>
         </div>
-        <div class="stat-card purple">
-          <div class="stat-icon purple">📅</div>
+        <div class="stat-card">
+          <div class="stat-icon" style="color:var(--purple);">📅</div>
           <div class="stat-value" id="analytics-weekly-hours">0</div>
           <div class="stat-label">Weekly Hours</div>
         </div>
       </div>
 
       <div class="grid-3 mb-24">
-        <div class="card card-hud" style="grid-column:span 2;">
-          <div class="card-title">📈 7-Day Synaptic Activity Profile</div>
+        <div class="card" style="grid-column:span 2;">
+          <div class="card-title">📈 7-Day Study Time</div>
           <div id="daily-chart" class="chart-bar-container">
             <div class="flex-center" style="width:100%;"><div class="spinner"></div></div>
           </div>
         </div>
 
-        <div class="card card-hud">
-          <div class="card-title">🎯 Task Matrix Status</div>
+        <div class="card">
+          <div class="card-title">🎯 Tasks Breakdown</div>
           <div id="tasks-breakdown">
             <div class="flex-center" style="padding:24px;"><div class="spinner"></div></div>
           </div>
@@ -626,19 +883,19 @@
       </div>
 
       <div class="grid-2 mb-24">
-        <div class="card card-hud">
+        <div class="card">
           <div class="card-title">📚 Subject Distribution</div>
           <div id="subject-breakdown">
-            <p class="text-muted text-xs">Record study sessions to see breakdown.</p>
+            <p class="text-muted text-xs">Record study sessions to view distribution.</p>
           </div>
         </div>
 
-        <div class="card card-hud">
-          <div class="card-title">🗓️ 30-Day Consistency Grid</div>
+        <div class="card">
+          <div class="card-title">🗓️ 30-Day Study Consistency</div>
           <div id="habit-tracker" class="habit-dots mb-12"></div>
           <div class="flex gap-12">
-            <div class="flex gap-4 items-center"><div class="habit-dot done"></div><span class="text-xs text-muted">Focused</span></div>
-            <div class="flex gap-4 items-center"><div class="habit-dot"></div><span class="text-xs text-muted">Resting</span></div>
+            <div class="flex gap-4 items-center"><div class="habit-dot done"></div><span class="text-xs text-muted">Studied</span></div>
+            <div class="flex gap-4 items-center"><div class="habit-dot"></div><span class="text-xs text-muted">Rest</span></div>
           </div>
         </div>
       </div>
@@ -648,70 +905,71 @@
     <section id="page-settings" class="page-section page-content">
       <div class="grid-2">
         <div>
-          <div class="card card-hud mb-16">
-            <div class="card-title">👤 Explorer Identity</div>
+          <div class="card mb-16">
+            <div class="card-title">👤 Account</div>
             <div class="flex items-center gap-16 mb-16">
-              <div class="user-avatar" id="settings-avatar" style="width:52px;height:52px;font-size:22px;">U</div>
+              <div class="user-avatar" id="settings-avatar" style="width:48px;height:48px;font-size:18px;">U</div>
               <div>
-                <div id="settings-name" class="font-bold text-accent" style="font-size:16px;">Agent</div>
-                <div id="settings-email" class="text-xs text-muted font-mono">agent@synapse.ai</div>
+                <div id="settings-name" class="font-bold text-accent" style="font-size:16px;">Student</div>
+                <div id="settings-email" class="text-xs text-muted">student@example.com</div>
               </div>
             </div>
+            <button class="btn btn-secondary btn-sm" onclick="logout()" style="display:inline-flex;align-items:center;gap:6px;">
+              <span>🚪</span> Sign Out
+            </button>
           </div>
 
-          <div class="card card-hud mb-16">
-            <div class="card-title">🎨 Visual & Acoustic Preferences</div>
+          <div class="card mb-16">
+            <div class="card-title">🎨 Appearance & Goals</div>
             <div class="form-group">
-              <label class="form-label">System HUD Theme</label>
+              <label class="form-label">Theme</label>
               <select class="form-select" id="pref-theme" onchange="toggleTheme()">
-                <option value="dark">🌙 Deep Space Dark (Neon HUD)</option>
-                <option value="light">☀️ Cyber Light Mode</option>
+                <option value="dark">🌙 Dark Mode</option>
+                <option value="light">☀️ Light Mode</option>
               </select>
             </div>
             <div class="form-group">
-              <label class="form-label">Daily Focus Target (Hours)</label>
+              <label class="form-label">Daily Study Goal (Hours)</label>
               <input type="number" class="form-input" id="pref-daily-goal" value="4" min="1" max="16" />
             </div>
-            <button class="btn btn-primary btn-sm" onclick="savePreferences()">Save System Config</button>
+            <button class="btn btn-primary btn-sm" onclick="savePreferences()">Save Settings</button>
           </div>
         </div>
 
         <div>
-          <div class="card card-hud mb-16">
-            <div class="card-title">⌨️ Cyber Command Shortcuts</div>
+          <div class="card mb-16">
+            <div class="card-title">⌨️ Keyboard Shortcuts</div>
             <div style="display:flex;flex-direction:column;gap:10px;">
-              <div class="flex-between"><span class="text-sm">Command Center</span><span class="hud-tag">Ctrl+K</span></div>
-              <div class="flex-between"><span class="text-sm">New Task Modal</span><span class="hud-tag">Ctrl+N</span></div>
-              <div class="flex-between"><span class="text-sm">Mission Dashboard</span><span class="hud-tag">1</span></div>
-              <div class="flex-between"><span class="text-sm">Task Matrix</span><span class="hud-tag">2</span></div>
-              <div class="flex-between"><span class="text-sm">AI Study Planner</span><span class="hud-tag">3</span></div>
-              <div class="flex-between"><span class="text-sm">Focus Reactor</span><span class="hud-tag">4</span></div>
+              <div class="flex-between"><span class="text-sm">Quick Search</span><span class="hud-tag">Ctrl+K</span></div>
+              <div class="flex-between"><span class="text-sm">New Task</span><span class="hud-tag">Ctrl+N</span></div>
+              <div class="flex-between"><span class="text-sm">Dashboard</span><span class="hud-tag">1</span></div>
+              <div class="flex-between"><span class="text-sm">Tasks</span><span class="hud-tag">2</span></div>
+              <div class="flex-between"><span class="text-sm">Study Planner</span><span class="hud-tag">3</span></div>
+              <div class="flex-between"><span class="text-sm">Focus Timer</span><span class="hud-tag">4</span></div>
               <div class="flex-between"><span class="text-sm">Calendar</span><span class="hud-tag">5</span></div>
-              <div class="flex-between"><span class="text-sm">AI StudyBot</span><span class="hud-tag">6</span></div>
-              <div class="flex-between"><span class="text-sm">AI Synthesizer</span><span class="hud-tag">7</span></div>
-              <div class="flex-between"><span class="text-sm">Close Overlay</span><span class="hud-tag">Esc</span></div>
+              <div class="flex-between"><span class="text-sm">AI Tutor</span><span class="hud-tag">6</span></div>
+              <div class="flex-between"><span class="text-sm">Summarize Notes</span><span class="hud-tag">7</span></div>
+              <div class="flex-between"><span class="text-sm">Close Modal</span><span class="hud-tag">Esc</span></div>
             </div>
           </div>
 
-          <div class="card card-hud">
-            <div class="card-title">💡 Study Productivity Protocol</div>
+          <div class="card">
+            <div class="card-title">💡 Effective Study Tips</div>
             <ul style="list-style:none;display:flex;flex-direction:column;gap:10px;">
               <li class="flex items-center gap-8 text-sm text-secondary">
-                <span style="color:var(--accent);">✓</span> 25-minute uninterrupted focus intervals (Pomodoro)
+                <span style="color:var(--accent);">✓</span> Study in 25-minute focused blocks (Pomodoro)
               </li>
               <li class="flex items-center gap-8 text-sm text-secondary">
-                <span style="color:var(--green);">✓</span> 5-minute cognitive rest between focus runs
+                <span style="color:var(--green);">✓</span> Take 5-minute screen-free breaks between sessions
               </li>
               <li class="flex items-center gap-8 text-sm text-secondary">
-                <span style="color:var(--purple);">✓</span> Use Spaced Repetition Flashcards before sleep
+                <span style="color:var(--purple);">✓</span> Use flashcards for active recall before exams
               </li>
               <li class="flex items-center gap-8 text-sm text-secondary">
-                <span style="color:var(--yellow);">✓</span> Turn on 432Hz Alpha Waves to eliminate external noise
+                <span style="color:var(--yellow);">✓</span> Review summarized notes once a week for retention
               </li>
             </ul>
           </div>
-
-
         </div>
       </div>
     </section>
@@ -720,47 +978,146 @@
 </div>
 
 <!-- ══════════════════════════════════════════ -->
-<!-- MOBILE BOTTOM HUD NAVIGATION DOCK          -->
+<!-- MOBILE BOTTOM NAVIGATION DOCK              -->
 <!-- ══════════════════════════════════════════ -->
-<nav class="mobile-bottom-dock">
+<nav class="bottom-dock">
   <div class="dock-item active" data-page="dashboard" onclick="navigateTo('dashboard')">
-    <span class="dock-icon">🏠</span>
-    <span class="dock-label">Dash</span>
+    <span class="dock-icon">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    </span>
+    <span class="dock-label">Home</span>
   </div>
   <div class="dock-item" data-page="tasks" onclick="navigateTo('tasks')">
-    <span class="dock-icon">✅</span>
+    <span class="dock-icon">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m9 12 2 2 4-4"/></svg>
+    </span>
     <span class="dock-label">Tasks</span>
   </div>
   <div class="dock-item" data-page="timer" onclick="navigateTo('timer')">
-    <span class="dock-icon">⏱️</span>
+    <span class="dock-icon">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    </span>
     <span class="dock-label">Timer</span>
   </div>
   <div class="dock-item" data-page="summarizer" onclick="navigateTo('summarizer')">
-    <span class="dock-icon">⚡</span>
+    <span class="dock-icon">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/></svg>
+    </span>
     <span class="dock-label">Notes</span>
   </div>
   <div class="dock-item" data-page="chat" onclick="navigateTo('chat')">
-    <span class="dock-icon">🤖</span>
-    <span class="dock-label">Chat</span>
+    <span class="dock-icon">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    </span>
+    <span class="dock-label">Tutor</span>
   </div>
 </nav>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- GOOGLE OAUTH SETUP MODAL                   -->
+<!-- ══════════════════════════════════════════ -->
+<div class="modal-overlay" id="google-setup-modal" onclick="if(event.target.id === 'google-setup-modal') hideModal('google-setup-modal')">
+  <div class="modal" style="max-width:440px;">
+    <div class="modal-header">
+      <div class="flex items-center gap-8">
+        <svg width="22" height="22" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
+        <h3 class="modal-title" style="font-size:16px;">Connect Google OAuth</h3>
+      </div>
+      <button class="btn btn-ghost btn-icon" onclick="hideModal('google-setup-modal')">✕</button>
+    </div>
+
+    <p class="text-xs text-secondary mb-16 leading-relaxed">
+      To authenticate directly with real Google accounts, enter your Google Cloud OAuth Client ID (or set <code>GOOGLE_CLIENT_ID</code> in your <code>.env</code> file).
+    </p>
+
+    <div class="form-group mb-16">
+      <label class="form-label">Google OAuth Client ID</label>
+      <input type="text" class="form-input" id="setup-google-client-id" placeholder="xxxxxx-xxxxxx.apps.googleusercontent.com" />
+    </div>
+
+    <div class="flex gap-8">
+      <button type="button" class="btn btn-ghost flex-1" onclick="hideModal('google-setup-modal')">Cancel</button>
+      <button type="button" class="btn btn-primary flex-1" onclick="saveAndConnectGoogleClientId()">Save & Sign In</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- CAMERA DOCUMENT SCANNER MODAL              -->
+<!-- ══════════════════════════════════════════ -->
+<div class="modal-overlay" id="camera-scanner-modal" onclick="if(event.target.id === 'camera-scanner-modal') closeCameraScanner()">
+  <div class="modal scanner-modal" style="max-width:540px;padding:0;overflow:hidden;background:#090d16;">
+    <div class="modal-header" style="padding:16px 20px;border-bottom:1px solid rgba(255,255,255,0.08);">
+      <div class="flex items-center gap-8">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        <h3 class="modal-title" style="font-size:16px;">AI Camera Note Scanner</h3>
+      </div>
+      <button class="btn btn-ghost btn-icon" onclick="closeCameraScanner()" title="Close scanner">✕</button>
+    </div>
+
+    <!-- Scanner Viewfinder Box -->
+    <div class="scanner-viewport">
+      <video id="scanner-video" autoplay playsinline muted></video>
+      <canvas id="scanner-canvas" style="display:none;"></canvas>
+      <img id="scanner-preview-img" style="display:none;" alt="Captured Note" />
+
+      <!-- Viewfinder Overlay & Framing Guides -->
+      <div class="scanner-frame-overlay" id="scanner-frame-overlay">
+        <div class="scanner-corner corner-tl"></div>
+        <div class="scanner-corner corner-tr"></div>
+        <div class="scanner-corner corner-bl"></div>
+        <div class="scanner-corner corner-br"></div>
+        <div class="scanner-laser-beam"></div>
+        <div class="scanner-hint">Align notes or textbook page within frame</div>
+      </div>
+    </div>
+
+    <!-- Scanner Controls -->
+    <div class="scanner-controls">
+      <!-- Live mode controls -->
+      <div id="scanner-live-controls" class="flex-between items-center w-full">
+        <button type="button" class="btn btn-ghost btn-icon" onclick="switchScannerCamera()" title="Switch camera (front/back)">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+        </button>
+
+        <button type="button" class="scanner-shutter-btn" onclick="captureScannerPhoto()" title="Capture note photo">
+          <div class="shutter-inner"></div>
+        </button>
+
+        <button type="button" class="btn btn-ghost btn-icon" onclick="document.getElementById('scan-file-input').click(); closeCameraScanner();" title="Upload from photo library">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+        </button>
+      </div>
+
+      <!-- Preview mode controls (after snapping photo) -->
+      <div id="scanner-review-controls" class="hidden flex gap-12 w-full">
+        <button type="button" class="btn btn-secondary flex-1" onclick="retakeScannerPhoto()">
+          ↺ Retake
+        </button>
+        <button type="button" class="btn btn-primary flex-1" onclick="confirmScannedPhoto()">
+          ✓ Use This Note
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- ══════════════════════════════════════════ -->
 <!-- TASK MODAL                                 -->
 <!-- ══════════════════════════════════════════ -->
 <div class="modal-overlay" id="task-modal" onclick="if(event.target.id === 'task-modal') hideModal('task-modal')">
-  <div class="modal card-hud">
+  <div class="modal">
     <div class="modal-header">
-      <h2 class="modal-title" id="task-modal-title">Create New Mission</h2>
+      <h2 class="modal-title" id="task-modal-title">Create New Task</h2>
       <button class="btn btn-ghost btn-icon" onclick="hideModal('task-modal');resetTaskForm()">✕</button>
     </div>
     <form id="task-form" onsubmit="handleTaskSubmit(event)">
       <div class="form-group">
-        <label class="form-label">Mission Objective *</label>
-        <input type="text" class="form-input" id="task-form-title" placeholder="What needs to be mastered?" required />
+        <label class="form-label">Task Title *</label>
+        <input type="text" class="form-input" id="task-form-title" placeholder="e.g. Read Biology Chapter 4" required />
       </div>
       <div class="form-group">
-        <label class="form-label">Mission Brief / Details</label>
+        <label class="form-label">Description / Notes</label>
         <textarea class="form-textarea" id="task-form-desc" placeholder="Add study notes, links, or instructions..."></textarea>
       </div>
       <div class="grid-2">
@@ -769,7 +1126,7 @@
           <input type="text" class="form-input" id="task-form-subject" placeholder="e.g. Physics" />
         </div>
         <div class="form-group">
-          <label class="form-label">Priority Level</label>
+          <label class="form-label">Priority</label>
           <select class="form-select" id="task-form-priority">
             <option value="low">🟢 Low</option>
             <option value="medium" selected>🟡 Medium</option>
@@ -780,7 +1137,7 @@
       </div>
       <div class="grid-2">
         <div class="form-group">
-          <label class="form-label">Target Due Date</label>
+          <label class="form-label">Due Date</label>
           <input type="date" class="form-input" id="task-form-due" />
         </div>
         <div class="form-group">
@@ -790,17 +1147,17 @@
       </div>
       <div class="form-group">
         <label class="form-label">Tags (comma separated)</label>
-        <input type="text" class="form-input" id="task-form-tags" placeholder="exam, formula, chapter2" />
+        <input type="text" class="form-input" id="task-form-tags" placeholder="exam, chapter2, formulas" />
       </div>
       <div class="flex gap-8 mt-16">
-        <button type="submit" class="btn btn-primary" style="flex:1;">Deploy Task</button>
+        <button type="submit" class="btn btn-primary" style="flex:1;">Save Task</button>
         <button type="button" class="btn btn-secondary" onclick="hideModal('task-modal');resetTaskForm()">Cancel</button>
       </div>
     </form>
   </div>
 </div>
 
-<!-- ══ TOAST NOTIFICATION CONTAINER ══ -->
+<!-- ══ TOAST NOTIFICATIONS ══ -->
 <div class="toast-container" id="toast-container"></div>
 
 <!-- ══════════════════════════════════════════ -->
@@ -809,9 +1166,10 @@
 <script src="app.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-  initCyberCanvas();
   loadTheme();
   initKeyboardShortcuts();
+  initGoogleAuth();
+  checkGoogleRedirectToken();
 
   // Mobile menu button detection
   if (window.innerWidth <= 992) {
@@ -826,38 +1184,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  ensureSession().then(() => {
+  if (checkAuth()) {
     showApp();
-  });
+  } else {
+    showAuthPage();
+  }
 
   // Update date header
   const dateEl = document.getElementById('current-date-hud');
   if (dateEl) dateEl.textContent = new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
 });
-
-function showApp() {
-  const user = AppState.user;
-  if (user) {
-    setEl('sidebar-username', user.name || 'Explorer');
-    setEl('sidebar-email', user.email || 'agent@synapse.ai');
-    setEl('settings-name', user.name || 'Explorer');
-    setEl('settings-email', user.email || 'agent@synapse.ai');
-
-    const initial = (user.name || 'U')[0].toUpperCase();
-    setEl('sidebar-avatar', initial);
-    setEl('settings-avatar', initial);
-  }
-
-  loadDashboard();
-  loadTasks().then(() => {
-    updateTaskBadge();
-    renderCalendar();
-  });
-  loadAlarms();
-  startAlarmChecker();
-  requestNotificationPermission();
-  initHabitTracker();
-}
 
 async function handleTaskSubmit(e) {
   e.preventDefault();
@@ -881,11 +1217,11 @@ async function handleTaskSubmit(e) {
     if (editId) {
       await api(`/tasks/${editId}`, { method: 'PUT', body: taskData });
       delete form.dataset.editId;
-      document.getElementById('task-modal-title').textContent = 'Create New Mission';
-      toast('Task updated in matrix!', 'success');
+      document.getElementById('task-modal-title').textContent = 'Create New Task';
+      toast('Task updated!', 'success');
     } else {
       await api('/tasks', { method: 'POST', body: taskData });
-      toast('Task deployed! ⚡', 'success');
+      toast('Task created!', 'success');
     }
     hideModal('task-modal');
     resetTaskForm();
@@ -899,7 +1235,7 @@ async function handleTaskSubmit(e) {
 function resetTaskForm() {
   const form = document.getElementById('task-form');
   if (form) { form.reset(); delete form.dataset.editId; }
-  document.getElementById('task-modal-title').textContent = 'Create New Mission';
+  document.getElementById('task-modal-title').textContent = 'Create New Task';
 }
 
 function updateTaskBadge() {
@@ -913,7 +1249,6 @@ function updateTaskBadge() {
 
 let taskFilterStatus = '';
 function filterTasks(btn, status) {
-  CyberAudio.play('click');
   taskFilterStatus = status;
   document.querySelectorAll('.task-filter').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
@@ -942,12 +1277,11 @@ function applyTaskFilters(query = document.getElementById('task-search')?.value 
 let subjectCount = 0;
 function addSubjectField() {
   subjectCount++;
-  CyberAudio.play('click');
   const container = document.getElementById('subjects-list');
   const div = document.createElement('div');
   div.className = 'flex gap-8 items-center mb-8';
   div.innerHTML = `
-    <input type="text" class="form-input" name="subject-name" placeholder="Subject name (e.g. Astrophysics)" style="flex:2;" required />
+    <input type="text" class="form-input" name="subject-name" placeholder="Subject name (e.g. Mathematics)" style="flex:2;" required />
     <select class="form-select" name="subject-difficulty" style="flex:1;">
       <option value="easy">Easy</option>
       <option value="medium" selected>Medium</option>
@@ -988,7 +1322,7 @@ async function handlePlannerSubmit(e) {
     subjects,
     examDate: document.getElementById('plan-exam-date').value,
     dailyHours: parseInt(document.getElementById('plan-daily-hours').value),
-    title: `Quantum Plan - ${new Date().toLocaleDateString()}`
+    title: `Study Plan - ${new Date().toLocaleDateString()}`
   });
 
   loadSavedPlans();
@@ -1000,14 +1334,14 @@ async function loadSavedPlans() {
     const container = document.getElementById('saved-plans-list');
     if (!container) return;
     if (!data.plans.length) {
-      container.innerHTML = `<p class="text-xs text-muted">No stored blueprints.</p>`;
+      container.innerHTML = `<p class="text-xs text-muted">No saved study plans yet.</p>`;
       return;
     }
     container.innerHTML = data.plans.slice(0, 3).map(p => `
       <div class="task-item" style="margin-bottom:8px;">
         <div class="task-content">
           <div class="task-title text-accent">${escapeHtml(p.title)}</div>
-          <div class="text-xs text-muted font-mono">Exam: ${formatDate(p.examDate)} · ${p.subjects.length} Subjects</div>
+          <div class="text-xs text-muted">Exam: ${formatDate(p.examDate)} · ${p.subjects.length} Subjects</div>
         </div>
       </div>
     `).join('');
@@ -1064,7 +1398,6 @@ function handleGenerateFlashcards() {
 }
 
 function changeCalMonth(direction) {
-  CyberAudio.play('click');
   AppState.calendar.month += direction;
   if (AppState.calendar.month > 11) { AppState.calendar.month = 0; AppState.calendar.year++; }
   if (AppState.calendar.month < 0) { AppState.calendar.month = 11; AppState.calendar.year--; }
@@ -1072,7 +1405,6 @@ function changeCalMonth(direction) {
 }
 
 function savePreferences() {
-  CyberAudio.play('click');
   const theme = document.getElementById('pref-theme').value;
   const dailyGoal = document.getElementById('pref-daily-goal').value;
 
@@ -1080,28 +1412,26 @@ function savePreferences() {
     method: 'PUT',
     body: { theme, dailyGoalHours: parseFloat(dailyGoal) }
   }).then(() => {
-    toast('Preferences Saved!', 'success');
+    toast('Settings saved', 'success');
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('sp_theme', theme);
   }).catch(() => toast('Failed to save settings', 'error'));
 }
 
 function saveExamDate() {
-  CyberAudio.play('click');
   const date = document.getElementById('exam-date-input').value;
-  const name = document.getElementById('exam-name-input').value || 'Target Exam';
+  const name = document.getElementById('exam-name-input').value || 'Final Exam';
   if (!date) { toast('Please select an exam date', 'warning'); return; }
   localStorage.setItem('sp_exam_date', date);
   localStorage.setItem('sp_exam_name', name);
   updateExamCountdown();
-  toast('Target date locked in! 🎯', 'success');
+  toast('Exam date saved! 🎯', 'success');
 }
 
 function setQuickAlarm() {
-  CyberAudio.play('click');
   const title = document.getElementById('quick-alarm-title').value;
   const time = document.getElementById('quick-alarm-time').value;
-  if (!title || !time) { toast('Please specify alert title and time', 'warning'); return; }
+  if (!title || !time) { toast('Please specify reminder title and time', 'warning'); return; }
   setAlarm(title, new Date(time).toISOString(), '', 'none');
   document.getElementById('quick-alarm-title').value = '';
   document.getElementById('quick-alarm-time').value = '';

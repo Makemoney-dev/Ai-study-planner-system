@@ -6,12 +6,8 @@ const API_BASE = '/api';
 
 /* ─── GLOBAL APPLICATION STATE ─── */
 const AppState = {
-  user: {
-    name: 'Explorer',
-    email: 'explorer@synapse.ai',
-    stats: { totalHoursStudied: 0, totalTasksCompleted: 0, currentStreak: 1 }
-  },
-  token: localStorage.getItem('sp_token') || 'default_guest_token',
+  user: null,
+  token: null,
   tasks: [],
   currentPage: 'dashboard',
   timer: {
@@ -60,73 +56,46 @@ class CyberAudioEngine {
     return this.ctx;
   }
 
-  // Futuristic UI Micro-Interactions
-  play(type = 'click') {
-    if (AppState.sfxMuted) return;
+  // UI Audio Cues (gentle chimes for completion & alarms)
+  play(type = 'success') {
+    if (AppState.sfxMuted || type === 'click' || type === 'hover') return;
     try {
       const ctx = this.getContext();
       if (!ctx) return;
       const now = ctx.currentTime;
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
 
-      if (type === 'click') {
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(1200, now);
-        osc.frequency.exponentialRampToValueAtTime(600, now + 0.04);
-        gain.gain.setValueAtTime(0.06, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
-        osc.start(now);
-        osc.stop(now + 0.04);
-      } else if (type === 'hover') {
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(800, now);
-        gain.gain.setValueAtTime(0.02, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.025);
-        osc.start(now);
-        osc.stop(now + 0.025);
-      } else if (type === 'success') {
-        // Futuristic dual chime
-        [523.25, 659.25, 783.99, 1046.5].forEach((freq, i) => {
+      if (type === 'success') {
+        // Gentle pleasant completion chime
+        [523.25, 659.25, 783.99].forEach((freq, i) => {
           const o = ctx.createOscillator();
           const g = ctx.createGain();
           o.type = 'sine';
           o.frequency.value = freq;
           o.connect(g);
           g.connect(ctx.destination);
-          const t = now + i * 0.07;
-          g.gain.setValueAtTime(0.08, t);
-          g.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+          const t = now + i * 0.08;
+          g.gain.setValueAtTime(0.06, t);
+          g.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
           o.start(t);
-          o.stop(t + 0.35);
+          o.stop(t + 0.3);
         });
-      } else if (type === 'timerTick') {
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(1800, now);
-        gain.gain.setValueAtTime(0.04, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.02);
-        osc.start(now);
-        osc.stop(now + 0.02);
       } else if (type === 'alarm') {
-        // Dual alternating warble
-        [880, 660, 880, 1100].forEach((freq, i) => {
+        [660, 880, 660, 880].forEach((freq, i) => {
           const o = ctx.createOscillator();
           const g = ctx.createGain();
-          o.type = 'sawtooth';
+          o.type = 'sine';
           o.frequency.value = freq;
           o.connect(g);
           g.connect(ctx.destination);
           const t = now + i * 0.12;
-          g.gain.setValueAtTime(0.12, t);
+          g.gain.setValueAtTime(0.08, t);
           g.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
           o.start(t);
           o.stop(t + 0.14);
         });
       }
     } catch (e) {
-      console.warn('Audio effect error:', e);
+      // Audio not supported or blocked by browser
     }
   }
 
@@ -273,12 +242,12 @@ function updateSoundscapeUI(isActive, type = '') {
   }
   if (label) {
     const titles = {
-      alpha: '🧠 432Hz Quantum Alpha Waves',
-      rain: '🌧️ Cyber Rain Soundscape',
-      drone: '🌌 Cosmic Deep Drone',
-      gamma: '⚡ 40Hz Gamma Hyper-Focus'
+      alpha: '🧠 Calm Focus Tone (Alpha)',
+      rain: '🌧️ Gentle Rain',
+      drone: '🌌 Ambient White Noise',
+      gamma: '⚡ Concentration Tone'
     };
-    label.textContent = isActive ? titles[type] || 'Synthesized Ambient Active' : 'Soundscape Inactive';
+    label.textContent = isActive ? titles[type] || 'Focus Sound Active' : 'Sound Off';
   }
 }
 
@@ -288,106 +257,12 @@ function toggleSFXMute() {
   const btn = document.getElementById('sfx-toggle');
   if (btn) {
     btn.innerHTML = AppState.sfxMuted ? '🔇' : '🔊';
-    btn.title = AppState.sfxMuted ? 'Unmute Cyber SFX' : 'Mute Cyber SFX';
+    btn.title = AppState.sfxMuted ? 'Unmute Sound' : 'Mute Sound';
   }
-  if (!AppState.sfxMuted) CyberAudio.play('click');
 }
 
-/* ═══════════════════════════════════════════════════════
-   CYBER MATRIX & CONSTELLATION CANVAS ENGINE
-   ═══════════════════════════════════════════════════════ */
 function initCyberCanvas() {
-  const canvas = document.getElementById('cyber-canvas');
-  if (!canvas) return;
-  const ctx = canvas.getContext('2d');
-  let width, height;
-  let particles = [];
-  const mouse = { x: -1000, y: -1000, radius: 120 };
-
-  function resize() {
-    width = canvas.width = window.innerWidth;
-    height = canvas.height = window.innerHeight;
-    initParticles();
-  }
-
-  function initParticles() {
-    particles = [];
-    const count = Math.min(Math.floor((width * height) / 14000), 75);
-    for (let i = 0; i < count; i++) {
-      particles.push({
-        x: Math.random() * width,
-        y: Math.random() * height,
-        vx: (Math.random() - 0.5) * 0.45,
-        vy: (Math.random() - 0.5) * 0.45,
-        radius: Math.random() * 1.8 + 0.8,
-        alpha: Math.random() * 0.5 + 0.2
-      });
-    }
-  }
-
-  window.addEventListener('resize', resize);
-  window.addEventListener('mousemove', e => {
-    mouse.x = e.clientX;
-    mouse.y = e.clientY;
-  });
-  window.addEventListener('touchmove', e => {
-    if (e.touches[0]) {
-      mouse.x = e.touches[0].clientX;
-      mouse.y = e.touches[0].clientY;
-    }
-  }, { passive: true });
-
-  resize();
-
-  function animate() {
-    ctx.clearRect(0, 0, width, height);
-
-    // Render particles & connecting cyber synapses
-    for (let i = 0; i < particles.length; i++) {
-      const p = particles[i];
-      p.x += p.vx;
-      p.y += p.vy;
-
-      if (p.x < 0 || p.x > width) p.vx *= -1;
-      if (p.y < 0 || p.y > height) p.vy *= -1;
-
-      // Mouse gentle repulsion/attraction
-      const dx = mouse.x - p.x;
-      const dy = mouse.y - p.y;
-      const dist = Math.hypot(dx, dy);
-      if (dist < mouse.radius) {
-        const force = (mouse.radius - dist) / mouse.radius;
-        p.x -= (dx / dist) * force * 1.5;
-        p.y -= (dy / dist) * force * 1.5;
-      }
-
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(0, 240, 255, ${p.alpha})`;
-      ctx.shadowBlur = 8;
-      ctx.shadowColor = 'rgba(0, 240, 255, 0.4)';
-      ctx.fill();
-
-      // Connect near particles
-      for (let j = i + 1; j < particles.length; j++) {
-        const p2 = particles[j];
-        const pDist = Math.hypot(p.x - p2.x, p.y - p2.y);
-        if (pDist < 110) {
-          ctx.beginPath();
-          ctx.moveTo(p.x, p.y);
-          ctx.lineTo(p2.x, p2.y);
-          ctx.strokeStyle = `rgba(0, 240, 255, ${(1 - pDist / 110) * 0.15})`;
-          ctx.lineWidth = 0.75;
-          ctx.shadowBlur = 0;
-          ctx.stroke();
-        }
-      }
-    }
-
-    requestAnimationFrame(animate);
-  }
-
-  animate();
+  // Canvas particle loop disabled for clean, lightweight performance
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -412,63 +287,519 @@ async function api(endpoint, options = {}) {
 }
 
 /* ═══════════════════════════════════════════════════════
-   SESSION INITIALIZATION (DIRECT ACCESS - NO LOGIN REQUIRED)
+   AUTHENTICATION ENGINE & SECURITY PROTOCOLS
    ═══════════════════════════════════════════════════════ */
-async function ensureSession() {
+function checkAuth() {
   const token = localStorage.getItem('sp_token');
   const userStr = localStorage.getItem('sp_user');
-
   if (token && userStr) {
     try {
       AppState.token = token;
       AppState.user = JSON.parse(userStr);
-      return;
+      return true;
     } catch (e) {}
   }
-
-  try {
-    const data = await api('/auth/default-token');
-    if (data && data.token) {
-      setUser(data.token, data.user);
-      return;
-    }
-  } catch (err) {}
-
-  const defaultUser = {
-    name: 'Explorer',
-    email: 'explorer@synapse.ai',
-    stats: { totalHoursStudied: 0, totalTasksCompleted: 0, currentStreak: 1 }
-  };
-  setUser('default_guest_token', defaultUser);
+  return false;
 }
 
 function setUser(token, user) {
   AppState.token = token;
-  AppState.user = user || {
-    name: 'Explorer',
-    email: 'explorer@synapse.ai',
-    stats: { totalHoursStudied: 0, totalTasksCompleted: 0, currentStreak: 1 }
-  };
-  localStorage.setItem('sp_token', AppState.token);
-  localStorage.setItem('sp_user', JSON.stringify(AppState.user));
+  AppState.user = user;
+  localStorage.setItem('sp_token', token);
+  localStorage.setItem('sp_user', JSON.stringify(user));
 }
 
-function checkAuth() {
-  return true;
+function showAuthPage() {
+  const authEl = document.getElementById('auth-page');
+  const appEl = document.getElementById('app-layout');
+  if (authEl) {
+    authEl.classList.remove('hidden');
+    authEl.style.display = 'flex';
+  }
+  if (appEl) {
+    appEl.classList.add('hidden');
+  }
+}
+
+function showApp() {
+  const authEl = document.getElementById('auth-page');
+  const appEl = document.getElementById('app-layout');
+  if (authEl) {
+    authEl.classList.add('hidden');
+    authEl.style.display = 'none';
+  }
+  if (appEl) {
+    appEl.classList.remove('hidden');
+  }
+
+  const user = AppState.user;
+  if (user) {
+    setEl('sidebar-username', user.name || 'Student');
+    setEl('sidebar-email', user.email || 'student@example.com');
+    setEl('settings-name', user.name || 'Student');
+    setEl('settings-email', user.email || 'student@example.com');
+
+    const initial = (user.name || 'S')[0].toUpperCase();
+    setEl('sidebar-avatar', initial);
+    setEl('settings-avatar', initial);
+  }
+
+  loadDashboard();
+  loadTasks().then(() => {
+    updateTaskBadge();
+    renderCalendar();
+  });
+  loadAlarms();
+  startAlarmChecker();
+  requestNotificationPermission();
+  initHabitTracker();
 }
 
 function logout() {
-  // Silent reset
+  AppState.token = null;
+  AppState.user = null;
+  AppState.chatHistory = [];
   localStorage.removeItem('sp_token');
   localStorage.removeItem('sp_user');
-  window.location.reload();
+  if (AppState.alarmCheckerInterval) clearInterval(AppState.alarmCheckerInterval);
+  CyberAudio.stopSoundscape();
+  showAuthPage();
+  toast('Signed out successfully.', 'info');
+}
+
+/* ─── AUTH INTERACTIVE MODES (SIGN IN / SIGN UP / FORGOT) ─── */
+function switchAuthTab(tab) {
+  CyberAudio.play('click');
+  const tabsContainer = document.getElementById('auth-main-tabs');
+  const tabLogin = document.getElementById('tab-login');
+  const tabRegister = document.getElementById('tab-register');
+  const loginForm = document.getElementById('login-form');
+  const registerForm = document.getElementById('register-form');
+  const forgotForm = document.getElementById('forgot-form');
+  const googleBtn = document.getElementById('google-auth-btn');
+
+  if (tab === 'login') {
+    tabsContainer?.classList.remove('hidden');
+    googleBtn?.classList.remove('hidden');
+    tabLogin?.classList.add('active');
+    tabRegister?.classList.remove('active');
+    loginForm?.classList.remove('hidden');
+    registerForm?.classList.add('hidden');
+    forgotForm?.classList.add('hidden');
+  } else if (tab === 'register') {
+    tabsContainer?.classList.remove('hidden');
+    googleBtn?.classList.remove('hidden');
+    tabLogin?.classList.remove('active');
+    tabRegister?.classList.add('active');
+    loginForm?.classList.add('hidden');
+    registerForm?.classList.remove('hidden');
+    forgotForm?.classList.add('hidden');
+  } else if (tab === 'forgot') {
+    tabsContainer?.classList.add('hidden');
+    googleBtn?.classList.add('hidden');
+    loginForm?.classList.add('hidden');
+    registerForm?.classList.add('hidden');
+    forgotForm?.classList.remove('hidden');
+    document.getElementById('forgot-step-1')?.classList.remove('hidden');
+    document.getElementById('forgot-step-2')?.classList.add('hidden');
+  }
+}
+
+/* ─── PASSWORD EYE VISIBILITY TOGGLE ─── */
+function togglePasswordVisibility(inputId, btn) {
+  CyberAudio.play('hover');
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  const eyeOpen = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
+  const eyeClosed = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
+  if (input.type === 'password') {
+    input.type = 'text';
+    if (btn) btn.innerHTML = eyeClosed;
+  } else {
+    input.type = 'password';
+    if (btn) btn.innerHTML = eyeOpen;
+  }
+}
+
+/* ─── PASSWORD STRENGTH METER ─── */
+function checkPasswordStrength(val) {
+  const bars = [
+    document.getElementById('str-bar-1'),
+    document.getElementById('str-bar-2'),
+    document.getElementById('str-bar-3'),
+    document.getElementById('str-bar-4')
+  ];
+  const label = document.getElementById('str-label-text');
+  if (!val) {
+    bars.forEach(b => b && (b.className = 'strength-segment'));
+    if (label) { label.textContent = 'None'; label.style.color = 'var(--text-muted)'; }
+    return;
+  }
+
+  let score = 0;
+  if (val.length >= 6) score++;
+  if (val.length >= 10) score++;
+  if (/[A-Z]/.test(val) && /[a-z]/.test(val)) score++;
+  if (/[0-9]/.test(val) || /[^A-Za-z0-9]/.test(val)) score++;
+
+  const levels = ['weak', 'fair', 'good', 'strong'];
+  const names = ['Weak', 'Fair', 'Good', 'Strong ⚡'];
+  const colors = ['var(--red)', 'var(--yellow)', 'var(--accent)', 'var(--green)'];
+
+  bars.forEach((b, i) => {
+    if (!b) return;
+    b.className = 'strength-segment';
+    if (i < score) {
+      b.classList.add('active', levels[score - 1] || 'weak');
+    }
+  });
+
+  if (label) {
+    label.textContent = names[score - 1] || 'Weak';
+    label.style.color = colors[score - 1] || 'var(--red)';
+  }
+}
+
+/* ─── SUBMIT HANDLERS ─── */
+async function handleLoginSubmit(e) {
+  e.preventDefault();
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const btn = document.getElementById('login-submit-btn');
+
+  btn.innerHTML = '<span class="spinner"></span> Signing in...';
+  btn.disabled = true;
+
+  try {
+    const data = await api('/auth/login', {
+      method: 'POST',
+      body: { email, password }
+    });
+    setUser(data.token, data.user);
+    CyberAudio.play('success');
+    toast(`Welcome back, ${data.user.name || 'Student'}! 👋`, 'success');
+    showApp();
+  } catch (err) {
+    CyberAudio.play('alarm');
+    toast(err.message || 'Authentication failed. Please verify credentials.', 'error');
+  } finally {
+    btn.innerHTML = 'Sign In';
+    btn.disabled = false;
+  }
+}
+
+async function handleRegisterSubmit(e) {
+  e.preventDefault();
+  const name = document.getElementById('reg-name').value.trim();
+  const email = document.getElementById('reg-email').value.trim();
+  const password = document.getElementById('reg-password').value;
+  const confirmPassword = document.getElementById('reg-confirm-password').value;
+  const btn = document.getElementById('register-submit-btn');
+
+  if (password !== confirmPassword) {
+    toast('Passwords do not match!', 'warning');
+    return;
+  }
+
+  btn.innerHTML = '<span class="spinner"></span> Creating account...';
+  btn.disabled = true;
+
+  try {
+    const data = await api('/auth/register', {
+      method: 'POST',
+      body: { name, email, password }
+    });
+    setUser(data.token, data.user);
+    CyberAudio.play('success');
+    toast('Account created! Welcome 👋', 'success');
+    showApp();
+  } catch (err) {
+    CyberAudio.play('alarm');
+    toast(err.message || 'Registration failed.', 'error');
+  } finally {
+    btn.innerHTML = 'Create Account';
+    btn.disabled = false;
+  }
+}
+
+/* ─── GOOGLE AUTHENTIC SIGN-IN HANDLERS ─── */
+let googleClientId = null;
+let googleTokenClient = null;
+
+async function initGoogleAuth() {
+  try {
+    const res = await fetch((window.API_BASE || '') + '/api/auth/google/config');
+    const data = await res.json();
+    if (data && data.clientId) {
+      googleClientId = data.clientId;
+      setupGoogleIdentity(data.clientId);
+    }
+  } catch (err) {
+    console.warn('Could not fetch Google client ID config:', err);
+  }
+}
+
+function setupGoogleIdentity(clientId) {
+  if (typeof google === 'undefined' || !google.accounts) {
+    setTimeout(() => setupGoogleIdentity(clientId), 600);
+    return;
+  }
+
+  try {
+    // 1. Setup Google Identity Services (One-Tap / ID Token JWT)
+    google.accounts.id.initialize({
+      client_id: clientId,
+      callback: handleGoogleCredentialResponse,
+      auto_select: false,
+      cancel_on_tap_outside: true
+    });
+
+    // Optionally render official Google button if container exists
+    const container = document.getElementById('google-official-btn');
+    if (container) {
+      google.accounts.id.renderButton(container, {
+        theme: 'outline',
+        size: 'large',
+        width: '100%',
+        text: 'continue_with',
+        shape: 'rectangular',
+        logo_alignment: 'left'
+      });
+    }
+
+    // 2. Setup OAuth2 Token Client for authentic Google popup prompt
+    if (google.accounts.oauth2) {
+      googleTokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: clientId,
+        scope: 'email profile openid',
+        prompt: 'select_account',
+        callback: async (tokenResponse) => {
+          if (tokenResponse && tokenResponse.access_token) {
+            await verifyAndLoginWithGoogle({ accessToken: tokenResponse.access_token });
+          } else if (tokenResponse && tokenResponse.error) {
+            console.error('Google token error:', tokenResponse);
+            toast('Google sign-in error: ' + (tokenResponse.error_description || tokenResponse.error), 'error');
+          }
+        }
+      });
+    }
+  } catch (e) {
+    console.warn('Google Identity initialization error:', e);
+  }
+}
+
+async function handleGoogleCredentialResponse(response) {
+  if (!response || !response.credential) {
+    toast('No credential received from Google', 'error');
+    return;
+  }
+  await verifyAndLoginWithGoogle({ credential: response.credential });
+}
+
+async function verifyAndLoginWithGoogle(payload) {
+  showLoading('Verifying authentic Google account...');
+  try {
+    const data = await api('/auth/google', {
+      method: 'POST',
+      body: payload
+    });
+    hideLoading();
+    setUser(data.token, data.user);
+    CyberAudio.play('success');
+    toast(`Authenticated as ${data.user.email}! Welcome ${data.user.name} 👋`, 'success');
+    showApp();
+  } catch (err) {
+    hideLoading();
+    CyberAudio.play('alarm');
+    toast('Google authentication failed: ' + err.message, 'error');
+  }
+}
+
+async function handleGoogleLoginDirect() {
+  // If we don't have a Client ID yet, fetch it
+  if (!googleClientId) {
+    try {
+      const res = await fetch((window.API_BASE || '') + '/api/auth/google/config');
+      const data = await res.json();
+      if (data && data.clientId) {
+        googleClientId = data.clientId;
+        setupGoogleIdentity(data.clientId);
+      }
+    } catch (_) {}
+  }
+
+  // If still missing, prompt user with setup modal
+  if (!googleClientId) {
+    showModal('google-setup-modal');
+    return;
+  }
+
+  // Ensure Google Identity SDK is loaded
+  if (typeof google === 'undefined' || !google.accounts) {
+    toast('Loading Google Sign-In service, please try again in a moment...', 'info');
+    return;
+  }
+
+  if (googleTokenClient) {
+    googleTokenClient.requestAccessToken({ prompt: 'select_account' });
+  } else if (google.accounts.id) {
+    google.accounts.id.prompt((notification) => {
+      if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+        const redirectUri = window.location.origin + window.location.pathname;
+        const oauthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(googleClientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token&scope=email%20profile%20openid&prompt=select_account`;
+        window.location.href = oauthUrl;
+      }
+    });
+  } else {
+    const redirectUri = window.location.origin + window.location.pathname;
+    const oauthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(googleClientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token&scope=email%20profile%20openid&prompt=select_account`;
+    window.location.href = oauthUrl;
+  }
+}
+
+async function saveAndConnectGoogleClientId() {
+  const input = document.getElementById('setup-google-client-id');
+  const clientId = input ? input.value.trim() : '';
+  if (!clientId || !clientId.includes('.apps.googleusercontent.com')) {
+    toast('Please enter a valid Google Client ID (ending in .apps.googleusercontent.com)', 'warning');
+    return;
+  }
+
+  showLoading('Saving Google Client ID...');
+  try {
+    const res = await fetch((window.API_BASE || '') + '/api/auth/google/set-client-id', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ clientId })
+    });
+    const data = await res.json();
+    hideLoading();
+    if (res.ok && data.success) {
+      googleClientId = clientId;
+      hideModal('google-setup-modal');
+      setupGoogleIdentity(clientId);
+      toast('Google OAuth configured! Opening Google Sign-In...', 'success');
+      setTimeout(() => {
+        handleGoogleLoginDirect();
+      }, 500);
+    } else {
+      toast(data.message || 'Failed to configure Google Client ID', 'error');
+    }
+  } catch (err) {
+    hideLoading();
+    toast('Error saving Google Client ID: ' + err.message, 'error');
+  }
+}
+
+function checkGoogleRedirectToken() {
+  if (window.location.hash) {
+    const params = new URLSearchParams(window.location.hash.substring(1));
+    const accessToken = params.get('access_token');
+    if (accessToken) {
+      window.history.replaceState(null, '', window.location.pathname + window.location.search);
+      verifyAndLoginWithGoogle({ accessToken });
+    }
+  }
+}
+
+/* ─── FORGOT PASSWORD HANDLERS ─── */
+async function handleForgotSubmit(e) {
+  e.preventDefault();
+  const email = document.getElementById('forgot-email').value.trim();
+  const btn = document.getElementById('forgot-send-btn');
+  btn.innerHTML = '<span class="spinner"></span> Sending code...';
+  btn.disabled = true;
+
+  try {
+    const data = await api('/auth/forgot-password', {
+      method: 'POST',
+      body: { email }
+    });
+
+    CyberAudio.play('success');
+    toast(`Verification code: [ ${data.resetCode} ]`, 'info', 10000);
+
+    // Switch to step 2
+    document.getElementById('forgot-step-1')?.classList.add('hidden');
+    document.getElementById('forgot-step-2')?.classList.remove('hidden');
+
+    // Pre-fill code for effortless testing
+    const codeInput = document.getElementById('forgot-code');
+    if (codeInput && data.resetCode) {
+      codeInput.value = data.resetCode;
+    }
+  } catch (err) {
+    CyberAudio.play('alarm');
+    toast(err.message || 'Could not locate account with that email', 'error');
+  } finally {
+    btn.innerHTML = 'Send 6-Digit Code';
+    btn.disabled = false;
+  }
+}
+
+async function handleResetPasswordSubmit() {
+  const email = document.getElementById('forgot-email').value.trim();
+  const resetCode = document.getElementById('forgot-code').value.trim();
+  const newPassword = document.getElementById('forgot-new-password').value;
+  const btn = document.getElementById('forgot-reset-btn');
+
+  if (!resetCode || resetCode.length < 6) {
+    toast('Please enter the 6-digit verification code', 'warning');
+    return;
+  }
+  if (!newPassword || newPassword.length < 6) {
+    toast('New password must be at least 6 characters', 'warning');
+    return;
+  }
+
+  btn.innerHTML = '<span class="spinner"></span> Updating password...';
+  btn.disabled = true;
+
+  try {
+    const data = await api('/auth/reset-password', {
+      method: 'POST',
+      body: { email, resetCode, newPassword }
+    });
+    setUser(data.token, data.user);
+    CyberAudio.play('success');
+    toast('Password updated! Logging you in...', 'success');
+    showApp();
+  } catch (err) {
+    CyberAudio.play('alarm');
+    toast(err.message || 'Reset failed. Check verification code.', 'error');
+  } finally {
+    btn.innerHTML = 'Update Password & Sign In';
+    btn.disabled = false;
+  }
+}
+
+/* ─── ONE-CLICK GUEST / DEMO LOGIN ─── */
+async function handleGuestLogin() {
+  showLoading('Starting guest session...');
+  try {
+    const data = await api('/auth/default-token');
+    hideLoading();
+    setUser(data.token, data.user);
+    CyberAudio.play('success');
+    toast('Welcome! Signed in as Guest 👋', 'success');
+    showApp();
+  } catch (err) {
+    hideLoading();
+    const defaultUser = {
+      name: 'Student',
+      email: 'student@example.com',
+      stats: { totalHoursStudied: 0, totalTasksCompleted: 0, currentStreak: 1 }
+    };
+    setUser('guest_token', defaultUser);
+    showApp();
+  }
 }
 
 /* ═══════════════════════════════════════════════════════
-   CYBER HUD TOAST & FEEDBACK
+   TOAST NOTIFICATIONS
    ═══════════════════════════════════════════════════════ */
 function toast(message, type = 'info', duration = 3800) {
-  const icons = { success: '⚡', error: '⚠️', warning: '⚡', info: '🛰️' };
+  const icons = { success: '✅', error: '⚠️', warning: '⚡', info: '📘' };
   const container = document.getElementById('toast-container');
   if (!container) return;
 
@@ -542,16 +873,16 @@ function navigateTo(page) {
 
   // Update topbar title
   const titles = {
-    dashboard: '🏠 Mission Dashboard',
-    tasks: '✅ Task Matrix',
-    planner: '📅 AI Quantum Planner',
-    timer: '⏱️ Focus Reactor',
-    calendar: '📆 Neural Calendar',
-    chat: '🤖 AI StudyBot Assistant',
-    flashcards: '🃏 Holographic Flashcards',
-    summarizer: '⚡ AI Notes Synthesizer',
-    analytics: '📊 Quantum Analytics',
-    settings: '⚙️ Cyber System Settings'
+    dashboard: 'Dashboard',
+    tasks: 'Tasks',
+    planner: 'Study Planner',
+    timer: 'Focus Timer',
+    calendar: 'Calendar',
+    chat: 'AI Study Tutor',
+    flashcards: 'Flashcards',
+    summarizer: 'Summarize Notes',
+    analytics: 'Study Progress',
+    settings: 'Settings'
   };
 
   const titleEl = document.getElementById('topbar-title');
@@ -576,7 +907,6 @@ function toggleMobileSidebar(open) {
   const willOpen = open !== undefined ? open : !sidebar.classList.contains('mobile-open');
   sidebar.classList.toggle('mobile-open', willOpen);
   if (backdrop) backdrop.classList.toggle('active', willOpen);
-  CyberAudio.play('click');
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -599,26 +929,24 @@ function renderTasks(tasks) {
   if (!tasks.length) {
     container.innerHTML = `
       <div class="card flex-center" style="padding:48px;text-align:center;flex-direction:column;gap:12px;">
-        <span style="font-size:40px;">🛸</span>
-        <h3 class="font-hud" style="font-size:16px;">Task Matrix Clear</h3>
-        <p class="text-secondary text-sm">All missions completed. Deploy a new task below.</p>
-        <button class="btn btn-primary btn-sm mt-8" onclick="showModal('task-modal')">+ Create Mission Task</button>
+        <span style="font-size:36px;">📝</span>
+        <h3 style="font-size:16px;font-weight:600;">No tasks yet</h3>
+        <p class="text-secondary text-sm">Add your first study task or assignment to get started.</p>
+        <button class="btn btn-primary btn-sm mt-8" onclick="showModal('task-modal')">+ Add Task</button>
       </div>`;
     return;
   }
 
   container.innerHTML = tasks.map(task => `
     <div class="task-item ${task.status === 'completed' ? 'completed' : ''}" id="task-${task._id}">
-      <div class="task-checkbox ${task.status === 'completed' ? 'checked' : ''}" onclick="toggleTask('${task._id}', '${task.status}')">
-        ${task.status === 'completed' ? '✓' : ''}
-      </div>
+      <input type="checkbox" class="task-checkbox" ${task.status === 'completed' ? 'checked' : ''} onchange="toggleTask('${task._id}', '${task.status}')" />
       <div class="task-content">
-        <div class="task-title ${task.status === 'completed' ? 'completed-text' : ''}">${escapeHtml(task.title)}</div>
+        <div class="task-title">${escapeHtml(task.title)}</div>
         <div class="task-meta">
-          <span class="badge badge-${task.priority}">${task.priority}</span>
-          ${task.subject ? `<span class="badge badge-subject">${escapeHtml(task.subject)}</span>` : ''}
-          ${task.dueDate ? `<span class="text-xs text-muted font-mono">📅 ${formatDate(task.dueDate)}</span>` : ''}
-          ${task.tags?.slice(0, 3).map(t => `<span class="badge badge-tag">#${t}</span>`).join('') || ''}
+          <span class="task-badge ${task.priority}">${task.priority}</span>
+          ${task.subject ? `<span class="task-badge">${escapeHtml(task.subject)}</span>` : ''}
+          ${task.dueDate ? `<span>📅 ${formatDate(task.dueDate)}</span>` : ''}
+          ${task.tags?.slice(0, 3).map(t => `<span class="task-badge">#${t}</span>`).join('') || ''}
         </div>
       </div>
       <div class="task-actions">
@@ -636,9 +964,7 @@ async function toggleTask(id, currentStatus) {
     await loadTasks();
     if (newStatus === 'completed') {
       CyberAudio.play('success');
-      toast('Task Completed! +XP Earned ⚡', 'success');
-    } else {
-      CyberAudio.play('click');
+      toast('Task completed! Keep it up 🎉', 'success');
     }
   } catch(e) {
     toast('Failed to update task', 'error');
@@ -646,12 +972,11 @@ async function toggleTask(id, currentStatus) {
 }
 
 async function deleteTask(id) {
-  if (!confirm('Abort and delete this task?')) return;
+  if (!confirm('Are you sure you want to delete this task?')) return;
   try {
     await api(`/tasks/${id}`, { method: 'DELETE' });
-    CyberAudio.play('click');
     await loadTasks();
-    toast('Task removed from matrix', 'info');
+    toast('Task deleted', 'info');
   } catch(e) {
     toast('Failed to delete', 'error');
   }
@@ -666,19 +991,18 @@ function editTask(id) {
   document.getElementById('task-form-subject').value = task.subject || '';
   document.getElementById('task-form-priority').value = task.priority;
   document.getElementById('task-form-due').value = task.dueDate ? task.dueDate.split('T')[0] : '';
-  document.getElementById('task-modal-title').textContent = 'Modify Mission Task';
+  document.getElementById('task-modal-title').textContent = 'Edit Task';
   document.getElementById('task-form').dataset.editId = id;
   showModal('task-modal');
 }
 
 /* ═══════════════════════════════════════════════════════
-   POMODORO FOCUS REACTOR
+   POMODORO TIMER
    ═══════════════════════════════════════════════════════ */
 const TIMER_MODES = { pomodoro: 25 * 60, 'short-break': 5 * 60, 'long-break': 15 * 60 };
 
 function setTimerMode(mode) {
   if (AppState.timer.running) stopTimer();
-  CyberAudio.play('click');
   AppState.timer.mode = mode;
   AppState.timer.seconds = TIMER_MODES[mode];
   updateTimerDisplay();
@@ -691,7 +1015,7 @@ function updateTimerModeUI(mode) {
   });
   const label = document.getElementById('timer-mode-label');
   if (label) {
-    label.textContent = mode === 'pomodoro' ? 'Hyper-Focus Core' : mode === 'short-break' ? 'Quantum Cooldown' : 'Extended Recharge';
+    label.textContent = mode === 'pomodoro' ? 'Study Focus' : mode === 'short-break' ? 'Short Break' : 'Long Break';
   }
 }
 
@@ -861,8 +1185,7 @@ function removeTypingIndicator(id) {
    AI STUDY PLAN GENERATOR
    ═══════════════════════════════════════════════════════ */
 async function generateStudyPlan(formData) {
-  showLoading('⚡ Quantum AI calculating optimal study trajectory...');
-  CyberAudio.play('click');
+  showLoading('Generating your study schedule with AI...');
   try {
     const data = await api('/ai/generate-study-plan', {
       method: 'POST',
@@ -871,7 +1194,7 @@ async function generateStudyPlan(formData) {
     hideLoading();
     renderStudyPlan(data);
     CyberAudio.play('success');
-    toast('Study Plan Blueprint Generated!', 'success');
+    toast('Study plan generated!', 'success');
   } catch(e) {
     hideLoading();
     toast('Failed to generate plan: ' + e.message, 'error');
@@ -886,28 +1209,28 @@ function renderStudyPlan(data) {
   const days = data.daysUntilExam;
 
   container.innerHTML = `
-    <div class="card mb-24 card-hud">
-      <div class="card-title text-accent">📋 ${escapeHtml(plan.planTitle || 'Neural Study Blueprint')}</div>
+    <div class="card mb-24">
+      <div class="card-title text-accent">📋 ${escapeHtml(plan.planTitle || 'Personalized Study Plan')}</div>
       <p class="text-secondary mb-16">${escapeHtml(plan.overview || '')}</p>
-      <div class="countdown-grid mb-16">
-        <div class="countdown-unit">
-          <div class="countdown-num">${days}</div>
-          <div class="countdown-unit-label">Days to Target</div>
+      <div class="flex gap-16 mb-16">
+        <div class="stat-card" style="flex:1;">
+          <div class="stat-value">${days}</div>
+          <div class="stat-label">Days to Exam</div>
         </div>
-        <div class="countdown-unit">
-          <div class="countdown-num">${plan.weeklyPlan?.length || 1}</div>
-          <div class="countdown-unit-label">Weeks Cycle</div>
+        <div class="stat-card" style="flex:1;">
+          <div class="stat-value">${plan.weeklyPlan?.length || 1}</div>
+          <div class="stat-label">Total Weeks</div>
         </div>
       </div>
     </div>
 
     ${plan.learningStrategies?.length ? `
     <div class="card mb-24">
-      <div class="card-title">🧠 High-Performance Cognitive Strategies</div>
+      <div class="card-title">💡 Recommended Study Strategies</div>
       <ul style="list-style:none;display:flex;flex-direction:column;gap:10px;">
         ${plan.learningStrategies.map(s => `
           <li style="display:flex;align-items:flex-start;gap:10px;">
-            <span style="color:var(--accent);margin-top:1px;">⚡</span>
+            <span style="color:var(--accent);margin-top:1px;">✓</span>
             <span class="text-secondary text-sm">${escapeHtml(s)}</span>
           </li>
         `).join('')}
@@ -917,7 +1240,7 @@ function renderStudyPlan(data) {
 
     ${plan.weeklyPlan?.map(week => `
       <div class="card mb-16">
-        <div class="card-title">📅 Phase ${week.week}: ${escapeHtml(week.theme || 'Core Focus')}</div>
+        <div class="card-title">📅 Week ${week.week}: ${escapeHtml(week.theme || 'Focus Theme')}</div>
         <div style="display:grid;gap:10px;">
           ${Object.entries(week.dailyBreakdown || {}).map(([day, sessions]) => `
             <div style="background:var(--bg-elevated);border-radius:var(--radius-md);padding:14px;border:1px solid var(--border-light);">
@@ -947,14 +1270,231 @@ function renderStudyPlan(data) {
 }
 
 /* ═══════════════════════════════════════════════════════
-   AI NOTES SYNTHESIZER (NEW FUTURISTIC FEATURE)
+   CAMERA DOCUMENT SCANNER & AI NOTE SUMMARIZER
    ═══════════════════════════════════════════════════════ */
+let scannerStream = null;
+let currentCameraFacing = 'environment';
+let currentScannedImage = null;
+let currentScannedMime = 'image/jpeg';
+
+async function openCameraScanner() {
+  CyberAudio.play('click');
+  const modal = document.getElementById('camera-scanner-modal');
+  const video = document.getElementById('scanner-video');
+  const previewImg = document.getElementById('scanner-preview-img');
+  const overlay = document.getElementById('scanner-frame-overlay');
+  const liveControls = document.getElementById('scanner-live-controls');
+  const reviewControls = document.getElementById('scanner-review-controls');
+
+  if (previewImg) previewImg.style.display = 'none';
+  if (video) video.style.display = 'block';
+  if (overlay) overlay.style.display = 'block';
+  if (liveControls) liveControls.classList.remove('hidden');
+  if (reviewControls) reviewControls.classList.add('hidden');
+
+  showModal('camera-scanner-modal');
+
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    toast('Camera access not supported on this device/browser. Please upload a photo instead.', 'warning');
+    return;
+  }
+
+  // Stop any existing stream
+  if (scannerStream) {
+    scannerStream.getTracks().forEach(t => t.stop());
+  }
+
+  try {
+    scannerStream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: currentCameraFacing,
+        width: { ideal: 1920 },
+        height: { ideal: 1080 }
+      },
+      audio: false
+    });
+
+    if (video) {
+      video.srcObject = scannerStream;
+      video.play().catch(() => {});
+    }
+  } catch (err) {
+    console.warn('Camera stream error:', err);
+    toast('Could not open camera: ' + (err.message || 'Permission denied') + '. You can still upload a photo of your notes.', 'info');
+  }
+}
+
+function closeCameraScanner() {
+  if (scannerStream) {
+    scannerStream.getTracks().forEach(t => t.stop());
+    scannerStream = null;
+  }
+  const video = document.getElementById('scanner-video');
+  if (video) video.srcObject = null;
+  hideModal('camera-scanner-modal');
+}
+
+function switchScannerCamera() {
+  currentCameraFacing = currentCameraFacing === 'environment' ? 'user' : 'environment';
+  openCameraScanner();
+}
+
+function compressImage(dataUrl, maxDim = 1200, quality = 0.82) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      let { width, height } = img;
+      if (width > maxDim || height > maxDim) {
+        if (width > height) {
+          height = Math.round((height * maxDim) / width);
+          width = maxDim;
+        } else {
+          width = Math.round((width * maxDim) / height);
+          height = maxDim;
+        }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
+
+function captureScannerPhoto() {
+  const video = document.getElementById('scanner-video');
+  const canvas = document.getElementById('scanner-canvas');
+  const previewImg = document.getElementById('scanner-preview-img');
+  const overlay = document.getElementById('scanner-frame-overlay');
+  const liveControls = document.getElementById('scanner-live-controls');
+  const reviewControls = document.getElementById('scanner-review-controls');
+
+  if (!video || !canvas) return;
+
+  CyberAudio.play('click');
+
+  let width = video.videoWidth || 1280;
+  let height = video.videoHeight || 720;
+  const maxDim = 1200;
+  if (width > maxDim || height > maxDim) {
+    if (width > height) {
+      height = Math.round((height * maxDim) / width);
+      width = maxDim;
+    } else {
+      width = Math.round((width * maxDim) / height);
+      height = maxDim;
+    }
+  }
+
+  canvas.width = width;
+  canvas.height = height;
+
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0, width, height);
+
+  const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+  currentScannedImage = dataUrl;
+  currentScannedMime = 'image/jpeg';
+
+  if (previewImg) {
+    previewImg.src = dataUrl;
+    previewImg.style.display = 'block';
+  }
+  if (video) video.style.display = 'none';
+  if (overlay) overlay.style.display = 'none';
+  if (liveControls) liveControls.classList.add('hidden');
+  if (reviewControls) reviewControls.classList.remove('hidden');
+}
+
+function retakeScannerPhoto() {
+  const video = document.getElementById('scanner-video');
+  const previewImg = document.getElementById('scanner-preview-img');
+  const overlay = document.getElementById('scanner-frame-overlay');
+  const liveControls = document.getElementById('scanner-live-controls');
+  const reviewControls = document.getElementById('scanner-review-controls');
+
+  if (previewImg) previewImg.style.display = 'none';
+  if (video) video.style.display = 'block';
+  if (overlay) overlay.style.display = 'block';
+  if (liveControls) liveControls.classList.remove('hidden');
+  if (reviewControls) reviewControls.classList.add('hidden');
+}
+
+function confirmScannedPhoto() {
+  if (!currentScannedImage) return;
+
+  const thumb = document.getElementById('attached-scan-thumb');
+  const badge = document.getElementById('attached-scan-badge');
+  const desc = document.getElementById('attached-scan-desc');
+  const topicInput = document.getElementById('synth-topic');
+
+  if (thumb) thumb.src = currentScannedImage;
+  if (badge) badge.classList.remove('hidden');
+  if (desc) desc.textContent = 'Page photographed via camera scanner • Ready to summarize';
+  if (topicInput && !topicInput.value.trim()) {
+    topicInput.value = 'Scanned Lecture Notes';
+  }
+
+  closeCameraScanner();
+  CyberAudio.play('success');
+  toast('Notes scanned successfully! Click "Summarize Notes" to analyze', 'success');
+}
+
+function handleScannedFile(e) {
+  const file = e.target.files?.[0];
+  if (!file) return;
+
+  if (!file.type.startsWith('image/')) {
+    toast('Please select an image file', 'warning');
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = async function(evt) {
+    const rawDataUrl = evt.target.result;
+    toast('Optimizing photo for fast AI processing...', 'info', 1800);
+    const optimizedImage = await compressImage(rawDataUrl, 1200, 0.82);
+    currentScannedImage = optimizedImage;
+    currentScannedMime = 'image/jpeg';
+
+    const thumb = document.getElementById('attached-scan-thumb');
+    const badge = document.getElementById('attached-scan-badge');
+    const desc = document.getElementById('attached-scan-desc');
+    const topicInput = document.getElementById('synth-topic');
+
+    if (thumb) thumb.src = currentScannedImage;
+    if (badge) badge.classList.remove('hidden');
+    if (desc) desc.textContent = `${file.name} • Optimized for fast AI scan`;
+    if (topicInput && !topicInput.value.trim()) {
+      topicInput.value = file.name.replace(/\.[^/.]+$/, '');
+    }
+
+    CyberAudio.play('success');
+    toast('Photo attached! Click "Summarize Notes" to analyze', 'success');
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeAttachedScannedImage() {
+  currentScannedImage = null;
+  const badge = document.getElementById('attached-scan-badge');
+  const fileInput = document.getElementById('scan-file-input');
+  if (badge) badge.classList.add('hidden');
+  if (fileInput) fileInput.value = '';
+  toast('Attached scanned photo removed', 'info');
+}
+
 async function handleSynthesizeNotes() {
   const text = document.getElementById('synth-input-text')?.value.trim();
+  const topic = document.getElementById('synth-topic')?.value.trim() || '';
   const style = document.getElementById('synth-style')?.value || 'concise';
 
-  if (!text) {
-    toast('Please input lecture notes or reading material', 'warning');
+  if (!text && !currentScannedImage) {
+    toast('Please type your notes or use "Camera Scan" / "Upload Photo"', 'warning');
     return;
   }
 
@@ -962,35 +1502,52 @@ async function handleSynthesizeNotes() {
   const btn = document.getElementById('synth-submit-btn');
   const outputBox = document.getElementById('synth-output');
   if (btn) {
-    btn.innerHTML = '<span class="spinner"></span> Neural Synthesizing...';
+    btn.innerHTML = '<span class="spinner"></span> ' + (currentScannedImage ? 'Scanning & Summarizing...' : 'Summarizing...');
     btn.disabled = true;
   }
 
   if (outputBox) {
-    outputBox.innerHTML = '<div class="flex-center" style="padding:48px;"><div class="spinner" style="width:36px;height:36px;"></div><span class="text-accent text-sm ml-12" style="margin-left:12px;">Decoding synaptic notes matrix...</span></div>';
+    outputBox.innerHTML = `
+      <div class="flex-center" style="padding:48px;flex-direction:column;gap:14px;">
+        <div class="spinner" style="width:36px;height:36px;"></div>
+        <span class="text-accent text-sm font-bold">
+          ${currentScannedImage ? 'AI Vision reading document and generating summary...' : 'Synthesizing notes with AI...'}
+        </span>
+        <span class="text-xs text-muted">Extracting key concepts, formulas, and high-yield takeaways</span>
+      </div>`;
   }
 
   try {
+    const payload = {
+      text: text || '',
+      style,
+      topic
+    };
+
+    if (currentScannedImage) {
+      payload.image = currentScannedImage;
+      payload.mimeType = currentScannedMime || (currentScannedImage.match(/^data:([^;]+);/) ? currentScannedImage.match(/^data:([^;]+);/)[1] : 'image/jpeg');
+    }
+
     const data = await api('/ai/summarize', {
       method: 'POST',
-      body: { text, style }
+      body: payload
     });
 
     if (outputBox) {
-      // Futuristic typewriter text reveal
       outputBox.innerHTML = '';
       typewriterRender(outputBox, formatMarkdown(data.summary));
       document.getElementById('synth-actions-bar')?.classList.remove('hidden');
       window._latestSummary = data.summary;
     }
     CyberAudio.play('success');
-    toast('Synthesis complete!', 'success');
+    toast('Notes summarized successfully! 🎯', 'success');
   } catch(e) {
-    toast('Synthesis failed: ' + e.message, 'error');
-    if (outputBox) outputBox.innerHTML = `<p class="text-red">Error during synthesis: ${escapeHtml(e.message)}</p>`;
+    toast('Summary failed: ' + e.message, 'error');
+    if (outputBox) outputBox.innerHTML = `<p class="text-red">Error during summary: ${escapeHtml(e.message)}</p>`;
   } finally {
     if (btn) {
-      btn.innerHTML = '⚡ Synthesize Notes';
+      btn.innerHTML = '⚡ Summarize Notes';
       btn.disabled = false;
     }
   }
@@ -998,32 +1555,257 @@ async function handleSynthesizeNotes() {
 
 function typewriterRender(element, htmlContent) {
   element.innerHTML = htmlContent;
-  element.style.animation = 'sectionReveal 0.4s ease';
 }
 
 function copySynthesizedNotes() {
   if (!window._latestSummary) return;
   navigator.clipboard.writeText(window._latestSummary).then(() => {
-    CyberAudio.play('click');
     toast('Summary copied to clipboard!', 'success');
   });
 }
 
+function downloadSummaryPDF() {
+  if (!window._latestSummary) {
+    toast('No summary available to download as PDF', 'warning');
+    return;
+  }
+
+  CyberAudio.play('click');
+  const topic = document.getElementById('synth-topic')?.value.trim() || 'Study Notes';
+  const cleanTopic = topic.replace(/[^a-zA-Z0-9_-]/g, '_');
+
+  // Primary: Direct vector PDF via jsPDF - zero blank pages, crisp text, instant (<30ms)
+  const jsPdfLib = window.jspdf?.jsPDF || (typeof jsPDF !== 'undefined' ? jsPDF : null);
+  if (jsPdfLib) {
+    try {
+      generateDirectVectorPDF(jsPdfLib, topic, window._latestSummary, cleanTopic);
+      CyberAudio.play('success');
+      toast('PDF downloaded successfully! 📄', 'success');
+      return;
+    } catch (err) {
+      console.warn('Direct jsPDF error, trying HTML renderer:', err);
+    }
+  }
+
+  // Fallback 1: html2pdf with properly visible layout
+  if (typeof html2pdf !== 'undefined') {
+    generateHtml2Pdf(topic, window._latestSummary, cleanTopic);
+    return;
+  }
+
+  // Fallback 2: Browser print-to-PDF dialog
+  fallbackPrintPDF(topic, window._latestSummary);
+}
+
+function generateDirectVectorPDF(jsPdfLib, title, markdownContent, cleanTopic) {
+  const doc = new jsPdfLib({ unit: 'pt', format: 'a4' });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 42;
+  const contentWidth = pageWidth - (margin * 2);
+  let y = margin;
+
+  // Top color accent bar
+  doc.setFillColor(79, 70, 229); // #4f46e5
+  doc.rect(margin, y, contentWidth, 4, 'F');
+  y += 20;
+
+  // Header Subtitle
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9.5);
+  doc.setTextColor(79, 70, 229);
+  doc.text('AI STUDY PLANNER  •  HIGH-YIELD REVISION SUMMARY', margin, y);
+  y += 22;
+
+  // Main Topic Title
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(18);
+  doc.setTextColor(15, 23, 42); // #0f172a
+  const titleLines = doc.splitTextToSize(title, contentWidth);
+  doc.text(titleLines, margin, y);
+  y += (titleLines.length * 22) + 4;
+
+  // Date metadata
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(100, 116, 139);
+  const dateStr = `Generated: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`;
+  doc.text(dateStr, margin, y);
+  y += 14;
+
+  // Divider line
+  doc.setDrawColor(226, 232, 240);
+  doc.setLineWidth(1);
+  doc.line(margin, y, pageWidth - margin, y);
+  y += 22;
+
+  // Process markdown lines
+  const lines = markdownContent.split('\n');
+  for (let rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) {
+      y += 6;
+      continue;
+    }
+
+    // Auto-pagination
+    if (y > pageHeight - 55) {
+      doc.addPage();
+      y = margin + 10;
+    }
+
+    if (line.startsWith('### ') || line.startsWith('#### ')) {
+      y += 8;
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(12.5);
+      doc.setTextColor(67, 56, 202); // #4338ca
+      const headerText = line.replace(/^#+\s*/, '').replace(/\*\*/g, '');
+      const wrapped = doc.splitTextToSize(headerText, contentWidth);
+      doc.text(wrapped, margin, y);
+      y += (wrapped.length * 16) + 4;
+    } else if (line.startsWith('## ') || line.startsWith('# ')) {
+      y += 12;
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(14.5);
+      doc.setTextColor(15, 23, 42);
+      const headerText = line.replace(/^#+\s*/, '').replace(/\*\*/g, '');
+      const wrapped = doc.splitTextToSize(headerText, contentWidth);
+      doc.text(wrapped, margin, y);
+      y += (wrapped.length * 18) + 6;
+    } else if (line.startsWith('• ') || line.startsWith('* ') || line.startsWith('- ')) {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.setTextColor(51, 65, 85);
+      const bulletText = line.replace(/^[•*-]\s*/, '').replace(/\*\*/g, '');
+      const wrapped = doc.splitTextToSize(bulletText, contentWidth - 18);
+
+      doc.setFillColor(79, 70, 229);
+      doc.circle(margin + 5, y - 3, 2.2, 'F');
+      doc.text(wrapped, margin + 16, y);
+      y += (wrapped.length * 14.5) + 3;
+    } else {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.setTextColor(51, 65, 85);
+      const cleanLine = line.replace(/\*\*/g, '');
+      const wrapped = doc.splitTextToSize(cleanLine, contentWidth);
+      doc.text(wrapped, margin, y);
+      y += (wrapped.length * 14.5) + 3;
+    }
+  }
+
+  // Footer on all pages
+  const totalPages = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    doc.setDrawColor(241, 245, 249);
+    doc.setLineWidth(0.75);
+    doc.line(margin, pageHeight - 28, pageWidth - margin, pageHeight - 28);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(148, 163, 184);
+    doc.text('AI Study Planner  •  Keep pushing your study streak!', margin, pageHeight - 16);
+    doc.text(`Page ${i} of ${totalPages}`, pageWidth - margin - 45, pageHeight - 16);
+  }
+
+  doc.save(`Study-Summary-${cleanTopic}.pdf`);
+}
+
+function generateHtml2Pdf(topic, content, cleanTopic) {
+  const container = document.createElement('div');
+  container.style.position = 'fixed';
+  container.style.left = '0';
+  container.style.top = '0';
+  container.style.width = '750px';
+  container.style.zIndex = '999999';
+  container.style.background = '#ffffff';
+  container.style.color = '#0f172a';
+  container.style.padding = '36px 42px';
+  container.style.fontFamily = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+  container.style.lineHeight = '1.65';
+
+  container.innerHTML = `
+    <div style="border-bottom: 2px solid #4f46e5; padding-bottom: 14px; margin-bottom: 20px;">
+      <div style="font-size: 11px; font-weight: 700; color: #4f46e5; text-transform: uppercase;">AI Study Planner • High-Yield Summary</div>
+      <h1 style="font-size: 22px; font-weight: 800; color: #0f172a; margin: 4px 0;">${escapeHtml(topic)}</h1>
+      <div style="font-size: 11px; color: #64748b;">Generated: ${new Date().toLocaleDateString()}</div>
+    </div>
+    <div style="font-size: 13.5px; color: #334155;">
+      ${formatMarkdown(content)}
+    </div>
+  `;
+
+  document.body.appendChild(container);
+
+  toast('Generating PDF document...', 'info');
+  html2pdf().set({
+    margin: [10, 10, 10, 10],
+    filename: `Study-Summary-${cleanTopic}.pdf`,
+    image: { type: 'jpeg', quality: 0.98 },
+    html2canvas: { scale: 2, scrollX: 0, scrollY: 0 },
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+  }).from(container).save().then(() => {
+    document.body.removeChild(container);
+    CyberAudio.play('success');
+    toast('PDF downloaded successfully! 📄', 'success');
+  }).catch(() => {
+    document.body.removeChild(container);
+    fallbackPrintPDF(topic, content);
+  });
+}
+
+function fallbackPrintPDF(title, content) {
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) {
+    toast('Pop-up blocked. Please allow pop-ups to export PDF', 'warning');
+    return;
+  }
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>${escapeHtml(title)} - Summary PDF</title>
+      <style>
+        @page { size: A4; margin: 15mm; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #1e293b; line-height: 1.6; padding: 24px; background: #fff; }
+        h1 { color: #0f172a; margin-top: 0; }
+        h2, h3 { color: #4338ca; margin-top: 18px; margin-bottom: 6px; }
+        ul, ol { padding-left: 20px; }
+        li { margin-bottom: 6px; }
+        @media print { body { padding: 0; } }
+      </style>
+    </head>
+    <body>
+      <div style="border-bottom: 2px solid #4f46e5; padding-bottom: 12px; margin-bottom: 20px;">
+        <div style="font-size: 11px; font-weight: 700; color: #4f46e5;">AI STUDY PLANNER</div>
+        <h1>${escapeHtml(title)}</h1>
+        <div style="font-size: 11px; color: #64748b;">Generated: ${new Date().toLocaleDateString()}</div>
+      </div>
+      <div>${formatMarkdown(content)}</div>
+      <script>
+        window.onload = function() { window.print(); };
+      </script>
+    </body>
+    </html>
+  `);
+  printWindow.document.close();
+}
+
 async function exportSummaryToTasks() {
   if (!window._latestSummary) return;
-  CyberAudio.play('click');
   try {
     await api('/tasks', {
       method: 'POST',
       body: {
-        title: 'Review: ' + (document.getElementById('synth-topic')?.value || 'Synthesized Lecture Notes'),
+        title: 'Review: ' + (document.getElementById('synth-topic')?.value || 'Study Notes'),
         description: window._latestSummary.slice(0, 500) + '...',
         priority: 'high',
         estimatedMinutes: 30,
-        tags: ['synthesis', 'review']
+        tags: ['notes', 'review']
       }
     });
-    toast('Mission task added to Task Matrix! ✅', 'success');
+    toast('Task added to your tasks list! ✅', 'success');
     loadTasks();
   } catch(e) {
     toast('Could not export to task: ' + e.message, 'error');
@@ -1031,11 +1813,10 @@ async function exportSummaryToTasks() {
 }
 
 /* ═══════════════════════════════════════════════════════
-   3D HOLOGRAPHIC FLASHCARDS
+   FLASHCARDS
    ═══════════════════════════════════════════════════════ */
 async function generateFlashcards(topic, subject, count) {
-  showLoading('🃏 Holographic Flashcards Compiling...');
-  CyberAudio.play('click');
+  showLoading('Generating flashcards with AI...');
   try {
     const data = await api('/ai/flashcards', {
       method: 'POST',
@@ -1048,7 +1829,7 @@ async function generateFlashcards(topic, subject, count) {
     document.getElementById('flashcard-count').textContent = `1 / ${AppState.currentFlashcards.length}`;
     document.getElementById('flashcard-viewer').style.display = 'block';
     CyberAudio.play('success');
-    toast(`${AppState.currentFlashcards.length} Quantum Flashcards Initialized!`, 'success');
+    toast(`${AppState.currentFlashcards.length} Flashcards Created!`, 'success');
   } catch(e) {
     hideLoading();
     toast('Failed to generate cards: ' + e.message, 'error');
@@ -1066,7 +1847,7 @@ function renderFlashcardSets(sets) {
   const container = document.getElementById('flashcard-sets');
   if (!container) return;
   if (!sets.length) {
-    container.innerHTML = `<div class="empty-state"><span class="empty-icon">🃏</span><h3>No Card Decks Loaded</h3><p>Generate your first holographic set above.</p></div>`;
+    container.innerHTML = `<div class="card p-16 text-center text-muted text-sm">No flashcard decks yet. Generate your first deck above.</div>`;
     return;
   }
   container.innerHTML = sets.map(set => `
@@ -1448,28 +2229,27 @@ setInterval(() => {
 }, 1000);
 
 /* ═══════════════════════════════════════════════════════
-   CYBER OMNIBAR / COMMAND CENTER (CTRL+K)
+   QUICK SEARCH / COMMAND PALETTE (CTRL+K)
    ═══════════════════════════════════════════════════════ */
 const COMMANDS = [
-  { icon: '🏠', title: 'Go to Dashboard', category: 'Navigation', action: () => navigateTo('dashboard') },
-  { icon: '✅', title: 'Go to Task Manager', category: 'Navigation', action: () => navigateTo('tasks') },
-  { icon: '➕', title: 'Create New Task', category: 'Actions', action: () => showModal('task-modal') },
-  { icon: '⏱️', title: 'Open Focus Timer', category: 'Navigation', action: () => navigateTo('timer') },
-  { icon: '▶️', title: 'Start Pomodoro (25m)', category: 'Actions', action: () => { navigateTo('timer'); startTimer(); } },
-  { icon: '⚡', title: 'AI Notes Synthesizer', category: 'AI Tools', action: () => navigateTo('summarizer') },
-  { icon: '🤖', title: 'Open AI Assistant', category: 'AI Tools', action: () => navigateTo('chat') },
+  { icon: '🏠', title: 'Dashboard', category: 'Navigation', action: () => navigateTo('dashboard') },
+  { icon: '✅', title: 'Tasks & Assignments', category: 'Navigation', action: () => navigateTo('tasks') },
+  { icon: '➕', title: 'Add New Task', category: 'Actions', action: () => showModal('task-modal') },
+  { icon: '⏱️', title: 'Focus Timer', category: 'Navigation', action: () => navigateTo('timer') },
+  { icon: '▶️', title: 'Start 25m Timer', category: 'Actions', action: () => { navigateTo('timer'); startTimer(); } },
+  { icon: '⚡', title: 'Summarize Notes', category: 'AI Tools', action: () => navigateTo('summarizer') },
+  { icon: '🤖', title: 'Ask AI Tutor', category: 'AI Tools', action: () => navigateTo('chat') },
   { icon: '🃏', title: 'Review Flashcards', category: 'AI Tools', action: () => navigateTo('flashcards') },
-  { icon: '📅', title: 'Generate AI Study Plan', category: 'AI Tools', action: () => navigateTo('planner') },
-  { icon: '📆', title: 'View Calendar', category: 'Navigation', action: () => navigateTo('calendar') },
-  { icon: '📊', title: 'View Quantum Analytics', category: 'Navigation', action: () => navigateTo('analytics') },
-  { icon: '🧠', title: 'Play Alpha Waves 432Hz', category: 'Audio', action: () => { CyberAudio.toggleSoundscape('alpha'); } },
-  { icon: '🌧️', title: 'Play Cyber Rain Soundscape', category: 'Audio', action: () => { CyberAudio.toggleSoundscape('rain'); } },
-  { icon: '🌓', title: 'Toggle Theme (Dark/Light)', category: 'Settings', action: () => toggleTheme() },
-  { icon: '🔊', title: 'Toggle Cyber SFX Sound', category: 'Audio', action: () => toggleSFXMute() }
+  { icon: '📅', title: 'Create Study Schedule', category: 'AI Tools', action: () => navigateTo('planner') },
+  { icon: '📆', title: 'Calendar', category: 'Navigation', action: () => navigateTo('calendar') },
+  { icon: '📊', title: 'Progress & Stats', category: 'Navigation', action: () => navigateTo('analytics') },
+  { icon: '🧠', title: 'Play Focus Tone (Alpha)', category: 'Audio', action: () => { CyberAudio.toggleSoundscape('alpha'); } },
+  { icon: '🌧️', title: 'Play Rain Sounds', category: 'Audio', action: () => { CyberAudio.toggleSoundscape('rain'); } },
+  { icon: '🌓', title: 'Toggle Theme (Dark / Light)', category: 'Settings', action: () => toggleTheme() },
+  { icon: '🔊', title: 'Toggle Sound Effects', category: 'Settings', action: () => toggleSFXMute() }
 ];
 
 function openOmnibar() {
-  CyberAudio.play('click');
   const overlay = document.getElementById('omnibar-overlay');
   const input = document.getElementById('omnibar-input');
   if (overlay) {
