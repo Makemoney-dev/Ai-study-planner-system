@@ -904,8 +904,9 @@ function toggleMobileSidebar(open) {
   const backdrop = document.getElementById('sidebar-backdrop');
   if (!sidebar) return;
 
-  const willOpen = open !== undefined ? open : !sidebar.classList.contains('mobile-open');
+  const willOpen = open !== undefined ? open : (!sidebar.classList.contains('mobile-open') && !sidebar.classList.contains('open'));
   sidebar.classList.toggle('mobile-open', willOpen);
+  sidebar.classList.toggle('open', willOpen);
   if (backdrop) backdrop.classList.toggle('active', willOpen);
 }
 
