@@ -1455,12 +1455,19 @@ function confirmScannedPhoto() {
   if (!currentScannedImage) return;
 
   const thumb = document.getElementById('attached-scan-thumb');
+  const docIcon = document.getElementById('attached-scan-doc-icon');
   const badge = document.getElementById('attached-scan-badge');
+  const title = document.getElementById('attached-scan-title');
   const desc = document.getElementById('attached-scan-desc');
   const topicInput = document.getElementById('synth-topic');
 
-  if (thumb) thumb.src = currentScannedImage;
+  if (thumb) {
+    thumb.src = currentScannedImage;
+    thumb.style.display = 'block';
+  }
+  if (docIcon) docIcon.style.display = 'none';
   if (badge) badge.classList.remove('hidden');
+  if (title) title.innerHTML = '<span style="color:var(--green);">✓</span> Camera Scanned Note Attached';
   if (desc) desc.textContent = 'Page photographed via camera scanner • Ready to summarize';
   if (topicInput && !topicInput.value.trim()) {
     topicInput.value = 'Scanned Lecture Notes';
@@ -1471,48 +1478,117 @@ function confirmScannedPhoto() {
   toast('Notes scanned successfully! Click "Summarize Notes" to analyze', 'success');
 }
 
-function handleScannedFile(e) {
+async function handleScannedFile(e) {
   const file = e.target.files?.[0];
   if (!file) return;
 
-  if (!file.type.startsWith('image/')) {
-    toast('Please select an image file', 'warning');
+  const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+  const isImage = file.type.startsWith('image/');
+
+  if (!isPdf && !isImage) {
+    toast('Please select a PDF document or image file (JPG, PNG)', 'warning');
     return;
   }
 
-  const reader = new FileReader();
-  reader.onload = async function(evt) {
-    const rawDataUrl = evt.target.result;
+  if (file.size > 25 * 1024 * 1024) {
+    toast('File size exceeds the 25MB limit. Please upload a smaller file.', 'warning');
+    return;
+  }
+
+  const thumb = document.getElementById('attached-scan-thumb');
+  const docIcon = document.getElementById('attached-scan-doc-icon');
+  const docLabel = document.getElementById('attached-scan-type-label');
+  const badge = document.getElementById('attached-scan-badge');
+  const title = document.getElementById('attached-scan-title');
+  const desc = document.getElementById('attached-scan-desc');
+  const topicInput = document.getElementById('synth-topic');
+  const notesTextarea = document.getElementById('synth-input-text');
+
+  if (isPdf) {
+    toast('Processing PDF document for AI summarization...', 'info', 2000);
+    const reader = new FileReader();
+    reader.onload = async function(evt) {
+      currentScannedImage = evt.target.result;
+      currentScannedMime = 'application/pdf';
+
+      if (thumb) thumb.style.display = 'none';
+      if (docIcon) docIcon.style.display = 'flex';
+      if (docLabel) docLabel.textContent = 'PDF';
+      if (badge) badge.classList.remove('hidden');
+      if (title) title.innerHTML = '<span style="color:var(--green);">✓</span> PDF Document Attached';
+      if (desc) desc.textContent = `${file.name} (${(file.size / 1024).toFixed(0)} KB) • Ready for AI summarization`;
+      if (topicInput && !topicInput.value.trim()) {
+        topicInput.value = file.name.replace(/\.[^/.]+$/, '');
+      }
+
+      // If PDF.js is available in browser, attempt quick text extraction
+      if (window.pdfjsLib) {
+        try {
+          if (!window.pdfjsLib.GlobalWorkerOptions.workerSrc) {
+            window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+          }
+          const arrayBuffer = await file.arrayBuffer();
+          const pdfDoc = await window.pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
+          let extractedText = '';
+          const maxPages = Math.min(pdfDoc.numPages, 12);
+          for (let p = 1; p <= maxPages; p++) {
+            const page = await pdfDoc.getPage(p);
+            const textContent = await page.getTextContent();
+            const pageStr = textContent.items.map(i => i.str).join(' ');
+            if (pageStr.trim()) {
+              extractedText += `\n--- Page ${p} ---\n` + pageStr.trim() + '\n';
+            }
+          }
+          if (extractedText.trim() && notesTextarea && !notesTextarea.value.trim()) {
+            notesTextarea.value = extractedText.trim();
+            toast(`Extracted text from ${maxPages} page(s) of PDF!`, 'success', 2500);
+          }
+        } catch (pdfErr) {
+          console.log('PDF text preview notice (multimodal AI will read full document directly):', pdfErr);
+        }
+      }
+
+      CyberAudio.play('success');
+      toast('PDF attached! Click "Summarize Notes" to analyze', 'success');
+    };
+    reader.readAsDataURL(file);
+  } else {
+    // Image file
     toast('Optimizing photo for fast AI processing...', 'info', 1800);
-    const optimizedImage = await compressImage(rawDataUrl, 1200, 0.82);
-    currentScannedImage = optimizedImage;
-    currentScannedMime = 'image/jpeg';
+    const reader = new FileReader();
+    reader.onload = async function(evt) {
+      const rawDataUrl = evt.target.result;
+      const optimizedImage = await compressImage(rawDataUrl, 1200, 0.82);
+      currentScannedImage = optimizedImage;
+      currentScannedMime = 'image/jpeg';
 
-    const thumb = document.getElementById('attached-scan-thumb');
-    const badge = document.getElementById('attached-scan-badge');
-    const desc = document.getElementById('attached-scan-desc');
-    const topicInput = document.getElementById('synth-topic');
+      if (docIcon) docIcon.style.display = 'none';
+      if (thumb) {
+        thumb.src = currentScannedImage;
+        thumb.style.display = 'block';
+      }
+      if (badge) badge.classList.remove('hidden');
+      if (title) title.innerHTML = '<span style="color:var(--green);">✓</span> Photo / Note Attached';
+      if (desc) desc.textContent = `${file.name} • Optimized for fast AI scan`;
+      if (topicInput && !topicInput.value.trim()) {
+        topicInput.value = file.name.replace(/\.[^/.]+$/, '');
+      }
 
-    if (thumb) thumb.src = currentScannedImage;
-    if (badge) badge.classList.remove('hidden');
-    if (desc) desc.textContent = `${file.name} • Optimized for fast AI scan`;
-    if (topicInput && !topicInput.value.trim()) {
-      topicInput.value = file.name.replace(/\.[^/.]+$/, '');
-    }
-
-    CyberAudio.play('success');
-    toast('Photo attached! Click "Summarize Notes" to analyze', 'success');
-  };
-  reader.readAsDataURL(file);
+      CyberAudio.play('success');
+      toast('Photo attached! Click "Summarize Notes" to analyze', 'success');
+    };
+    reader.readAsDataURL(file);
+  }
 }
 
 function removeAttachedScannedImage() {
   currentScannedImage = null;
+  currentScannedMime = null;
   const badge = document.getElementById('attached-scan-badge');
   const fileInput = document.getElementById('scan-file-input');
   if (badge) badge.classList.add('hidden');
   if (fileInput) fileInput.value = '';
-  toast('Attached scanned photo removed', 'info');
+  toast('Attached file removed', 'info');
 }
 
 async function handleSynthesizeNotes() {
@@ -1521,26 +1597,31 @@ async function handleSynthesizeNotes() {
   const style = document.getElementById('synth-style')?.value || 'concise';
 
   if (!text && !currentScannedImage) {
-    toast('Please type your notes or use "Camera Scan" / "Upload Photo"', 'warning');
+    toast('Please type your notes or use "Upload File" (PDF/Photo) or "Camera Scan"', 'warning');
     return;
   }
+
+  const isPdf = currentScannedMime === 'application/pdf' || (currentScannedImage && currentScannedImage.startsWith('data:application/pdf'));
 
   CyberAudio.play('click');
   const btn = document.getElementById('synth-submit-btn');
   const outputBox = document.getElementById('synth-output');
   if (btn) {
-    btn.innerHTML = '<span class="spinner"></span> ' + (currentScannedImage ? 'Scanning & Summarizing...' : 'Summarizing...');
+    const loadingLabel = isPdf ? 'Analyzing PDF & Summarizing...' : (currentScannedImage ? 'Scanning & Summarizing...' : 'Summarizing...');
+    btn.innerHTML = `<span class="spinner"></span> ${loadingLabel}`;
     btn.disabled = true;
   }
 
   if (outputBox) {
+    const statusText = isPdf
+      ? 'AI reading PDF document and generating study summary...'
+      : (currentScannedImage ? 'AI Vision reading document and generating summary...' : 'Synthesizing notes with AI...');
+
     outputBox.innerHTML = `
       <div class="flex-center" style="padding:48px;flex-direction:column;gap:14px;">
         <div class="spinner" style="width:36px;height:36px;"></div>
-        <span class="text-accent text-sm font-bold">
-          ${currentScannedImage ? 'AI Vision reading document and generating summary...' : 'Synthesizing notes with AI...'}
-        </span>
-        <span class="text-xs text-muted">Extracting key concepts, formulas, and high-yield takeaways</span>
+        <span class="text-accent text-sm font-bold">${statusText}</span>
+        <span class="text-xs text-muted">Extracting key concepts, definitions, formulas, and high-yield takeaways</span>
       </div>`;
   }
 

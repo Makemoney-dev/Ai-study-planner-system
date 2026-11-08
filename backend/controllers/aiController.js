@@ -490,20 +490,39 @@ exports.getFlashcards = async (req, res) => {
   }
 };
 
-// POST /api/ai/summarize (Supports text and Camera Document Scans)
+// POST /api/ai/summarize (Supports text, PDFs, and Camera Document Scans)
 exports.summarize = async (req, res) => {
   try {
     const { text, image, mimeType, style = 'concise', topic = '' } = req.body;
 
     if (!text && !image) {
-      return res.status(400).json({ success: false, message: 'Text or camera image is required' });
+      return res.status(400).json({ success: false, message: 'Text or document/image file is required' });
     }
 
     let summary = '';
 
     if (image) {
-      // Image scanned via camera or uploaded
-      const visionPrompt = `You are an expert academic AI document scanner and study note summarizer.
+      // Document scanned via camera or uploaded (PDF or Image)
+      const isPdf = (mimeType && mimeType.includes('pdf')) || (typeof image === 'string' && image.startsWith('data:application/pdf'));
+      const activeMime = isPdf ? 'application/pdf' : (mimeType || 'image/jpeg');
+
+      const docPrompt = isPdf
+        ? `You are an expert academic AI document analyzer and study note summarizer.
+1. Read, extract, and analyze the full contents of this attached PDF document ("${topic || 'Study Document'}").
+${text ? `2. Also synthesize these additional notes/context provided by the student:\n"""\n${text}\n"""\n` : ''}
+3. Generate a comprehensive, high-yield study summary in a ${style} format for "${topic || 'Document Summary'}".
+
+Structure your response with:
+### 📄 Document Overview: ${topic || 'Key Chapters & Concepts'}
+(Concise synopsis of the core subject matter covered in the PDF)
+
+### ⚡ Structured Study Summary
+• **Core Concepts & Principles**: Clear bullet points explaining the primary arguments, theories, and ideas
+• **Key Terms & Definitions**: Essential vocabulary, formulas, laws, and definitions
+• **High-Yield Exam Takeaways**: Critical facts, likely exam questions, and revision takeaways
+
+Format with clean markdown headings and bullet points.`
+        : `You are an expert academic AI document scanner and study note summarizer.
 1. Accurately read, transcribe, and analyze all the text, paragraphs, diagrams, and lecture notes in this attached image.
 ${text ? `2. Also include and synthesize these additional notes/context provided by the student:\n"""\n${text}\n"""\n` : ''}
 3. Provide a structured, high-yield study summary in a ${style} format for "${topic || 'Study Notes'}".
@@ -517,17 +536,15 @@ Structure your response with:
 • **Key Terms & Definitions**: Important vocabulary, concepts, and formulas
 • **Key Exam Takeaways**: What to remember for tests and quizzes`;
 
-      summary = await callAIVision(image, mimeType, visionPrompt);
+      summary = await callAIVision(image, activeMime, docPrompt);
 
       if (!summary) {
-        summary = `### 📝 Scanned Notes Summary: ${topic || 'Study Material'}
+        summary = `### ${isPdf ? '📄 PDF Document Summary' : '📝 Scanned Notes Summary'}: ${topic || 'Study Material'}
 
-• **Extracted Content**: Handwritten/printed study material captured via camera scanner.
-• **Core Definitions**: Fundamental ideas, formulas, and terminology identified from your scanned page.
+• **Extracted Content**: Comprehensive study material parsed from your ${isPdf ? 'PDF document' : 'scanned notes'}.
+• **Core Definitions**: Fundamental ideas, formulas, and terminology identified across the material.
 • **High-Yield Takeaways**: Essential principles synthesized for rapid retention.
-• **Next Step**: Click "Download PDF" below to save this summary or create flashcards to test your recall.
-
-*(AI Vision active. For optimal optical scanning, ensure good lighting and clear camera focus.)*`;
+• **Next Step**: Click "Download PDF" below to save this summary or create flashcards to test your recall.`;
       }
     } else {
       const systemPrompt = `You are an expert at summarizing educational content. Create clear, well-structured summaries.`;
