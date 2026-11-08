@@ -1025,14 +1025,34 @@ a {
 /* ═══════════════════════════════════════════════════════
    AI CHAT & TUTOR (FULL RESPONSIVE SYSTEM)
    ═══════════════════════════════════════════════════════ */
+body.chat-mode .main-content,
+.main-content:has(#page-chat.active) {
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0 !important;
+  max-height: 100dvh !important;
+  overflow: hidden !important;
+  padding-bottom: 0 !important;
+}
+
+body.chat-mode,
+html:has(#page-chat.active) {
+  overflow: hidden;
+}
+
 #page-chat {
-  height: calc(100vh - var(--topbar-h));
   display: none;
+  flex: 1 1 0%;
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
   flex-direction: column;
   box-sizing: border-box;
   overflow: hidden;
-  padding-top: 16px;
-  padding-bottom: 12px;
+  padding: 12px 20px 10px;
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
 }
 
 #page-chat.active {
@@ -1042,12 +1062,11 @@ a {
 .chat-container {
   display: flex;
   flex-direction: column;
-  flex: 1;
+  flex: 1 1 0%;
   min-height: 0;
   height: 100%;
-  max-width: 880px;
+  max-height: 100%;
   width: 100%;
-  margin: 0 auto;
   overflow: hidden;
 }
 
@@ -1055,7 +1074,7 @@ a {
   display: flex;
   gap: 8px;
   overflow-x: auto;
-  padding: 2px 2px 10px;
+  padding: 4px 2px 10px;
   flex-shrink: 0;
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -1079,6 +1098,9 @@ a {
   transition: var(--transition);
   flex-shrink: 0;
   user-select: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .chat-suggestion:hover {
@@ -1088,10 +1110,11 @@ a {
 }
 
 .chat-messages {
-  flex: 1;
+  flex: 1 1 0%;
   min-height: 0;
   overflow-y: auto;
-  padding: 10px 4px;
+  overflow-x: hidden;
+  padding: 10px 4px 14px;
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -1101,7 +1124,7 @@ a {
 .chat-message {
   display: flex;
   gap: 10px;
-  max-width: 85%;
+  max-width: 82%;
   align-items: flex-start;
 }
 
@@ -1120,6 +1143,7 @@ a {
   justify-content: center;
   font-size: 15px;
   flex-shrink: 0;
+  box-shadow: var(--shadow-sm);
 }
 
 .chat-message.user .chat-avatar {
@@ -1130,7 +1154,8 @@ a {
 .chat-bubble {
   background-color: var(--bg-surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: 14px;
+  border-bottom-left-radius: 4px;
   padding: 12px 16px;
   font-size: 13.5px;
   line-height: 1.55;
@@ -1138,6 +1163,15 @@ a {
   word-break: break-word;
   overflow-wrap: break-word;
   max-width: 100%;
+  box-shadow: var(--shadow-sm);
+}
+
+.chat-message.user .chat-bubble {
+  background-color: var(--accent);
+  color: #ffffff;
+  border: none;
+  border-radius: 14px;
+  border-bottom-right-radius: 4px;
 }
 
 .chat-bubble pre,
@@ -1146,12 +1180,6 @@ a {
   overflow-x: auto;
   word-break: break-all;
   white-space: pre-wrap;
-}
-
-.chat-message.user .chat-bubble {
-  background-color: var(--accent);
-  color: #ffffff;
-  border: none;
 }
 
 .chat-input-area {
@@ -1174,7 +1202,7 @@ a {
   font-size: 14px;
   line-height: 1.4;
   resize: none;
-  min-height: 42px;
+  min-height: 44px;
   max-height: 120px;
   outline: none;
   transition: var(--transition-fast);
@@ -1182,11 +1210,12 @@ a {
 
 .chat-input:focus {
   border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-dim);
 }
 
 .chat-send-btn {
-  min-height: 42px;
-  padding: 0 16px;
+  min-height: 44px;
+  padding: 0 18px;
   font-weight: 600;
   font-size: 13px;
   display: inline-flex;
@@ -1195,6 +1224,8 @@ a {
   gap: 6px;
   border-radius: var(--radius-sm);
   flex-shrink: 0;
+  background-color: var(--accent);
+  color: #ffffff;
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -1708,10 +1739,20 @@ a {
     gap: 12px;
   }
 
-  /* Chat Full Height on Mobile */
+  /* Chat Full Height on Tablets & Mobile */
+  body.chat-mode .main-content,
+  .main-content:has(#page-chat.active) {
+    padding-bottom: 0 !important;
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden !important;
+  }
+
   #page-chat {
-    height: calc(100dvh - var(--topbar-h) - var(--bottom-dock-h) - env(safe-area-inset-bottom, 0px)) !important;
-    padding: 10px 12px 6px 12px !important;
+    max-width: 100% !important;
+    padding: 8px 12px calc(var(--bottom-dock-h) + env(safe-area-inset-bottom, 0px) + 8px) 12px !important;
+    height: 100% !important;
+    max-height: 100% !important;
     overflow: hidden !important;
   }
 
@@ -1721,11 +1762,17 @@ a {
   }
 
   .chat-message {
-    max-width: 92%;
+    max-width: 88%;
   }
 
   .chat-input {
     font-size: 16px !important; /* Prevents auto-zoom on iOS touch */
+    min-height: 44px;
+  }
+
+  .chat-send-btn {
+    min-height: 44px;
+    padding: 0 16px;
   }
 
   /* Flashcards Scene */
@@ -1928,11 +1975,26 @@ a {
 
   /* AI Tutor Chat on Mobile */
   #page-chat {
-    padding: 8px 10px 4px 10px !important;
+    padding: 6px 10px calc(var(--bottom-dock-h) + env(safe-area-inset-bottom, 0px) + 6px) 10px !important;
+  }
+
+  .chat-suggestions {
+    padding: 2px 0 6px;
+    gap: 6px;
+  }
+
+  .chat-suggestion {
+    font-size: 11px;
+    padding: 5px 9px;
+  }
+
+  .chat-messages {
+    padding: 6px 2px 10px;
+    gap: 10px;
   }
 
   .chat-message {
-    max-width: 96%;
+    max-width: 95%;
     gap: 8px;
   }
 
@@ -1944,18 +2006,27 @@ a {
 
   .chat-bubble {
     font-size: 13px;
-    padding: 10px 12px;
+    padding: 9px 12px;
+    border-radius: 12px;
   }
 
-  .chat-suggestion {
-    font-size: 11.5px;
-    padding: 5px 10px;
+  .chat-input-area {
+    padding: 6px 0 2px;
+    gap: 6px;
+  }
+
+  .chat-input {
+    padding: 9px 12px;
+    min-height: 42px;
+    max-height: 90px;
+    border-radius: 8px;
   }
 
   .chat-send-btn {
     padding: 0 12px;
     min-height: 42px;
     font-size: 12px;
+    border-radius: 8px;
   }
 
   /* Modals on Mobile */
@@ -2044,6 +2115,25 @@ a {
 
   .timer-time {
     font-size: 30px;
+  }
+
+  /* Chat on small 320px-360px phones */
+  .chat-message {
+    max-width: 98%;
+  }
+
+  .chat-bubble {
+    font-size: 12.5px;
+    padding: 8px 10px;
+  }
+
+  .chat-send-btn span {
+    display: none;
+  }
+
+  .chat-send-btn {
+    padding: 0 10px;
+    min-width: 38px;
   }
 }
 

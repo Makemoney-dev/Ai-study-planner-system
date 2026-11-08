@@ -888,12 +888,21 @@ function navigateTo(page) {
   const titleEl = document.getElementById('topbar-title');
   if (titleEl) titleEl.textContent = titles[page] || page;
 
+  // Toggle chat-mode class on body for responsive layout lock
+  document.body.classList.toggle('chat-mode', page === 'chat');
+
   // Page-specific initialization
   if (page === 'dashboard') loadDashboard();
   if (page === 'tasks') loadTasks();
   if (page === 'analytics') loadAnalytics();
   if (page === 'calendar') renderCalendar();
   if (page === 'flashcards') loadFlashcardSets();
+  if (page === 'chat') {
+    setTimeout(() => {
+      const msgs = document.getElementById('chat-messages');
+      if (msgs) msgs.scrollTop = msgs.scrollHeight;
+    }, 60);
+  }
 
   // Close mobile drawer if opened
   toggleMobileSidebar(false);
