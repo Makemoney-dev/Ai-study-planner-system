@@ -1404,48 +1404,100 @@ html:has(#page-chat.active) {
    ═══════════════════════════════════════════════════════ */
 .flashcard-scene {
   perspective: 1000px;
+  -webkit-perspective: 1000px;
   width: 100%;
-  height: 220px;
+  min-height: 250px;
+  height: 250px;
   cursor: pointer;
+  position: relative;
+  user-select: none;
 }
 
 .flashcard-card {
   width: 100%;
   height: 100%;
   position: relative;
+  -webkit-transform-style: preserve-3d;
   transform-style: preserve-3d;
   transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  border-radius: var(--radius-md);
 }
 
 .flashcard-card.flipped {
+  -webkit-transform: rotateY(180deg);
   transform: rotateY(180deg);
 }
 
 .flashcard-face {
   position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
+  -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
   border-radius: var(--radius-md);
   border: 1px solid var(--border);
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 24px;
+  padding: 24px 28px;
   text-align: center;
-  font-size: 16px;
-  font-weight: 500;
+  box-shadow: var(--shadow-sm);
+  overflow-y: auto;
 }
 
 .flashcard-front {
   background-color: var(--bg-surface);
   color: var(--text-primary);
+  -webkit-transform: rotateY(0deg);
+  transform: rotateY(0deg);
 }
 
 .flashcard-back {
   background-color: var(--bg-elevated);
   color: var(--text-primary);
+  -webkit-transform: rotateY(180deg);
   transform: rotateY(180deg);
+  border-color: var(--accent);
+}
+
+.fc-badge {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  margin-bottom: 14px;
+  border: 1px solid var(--border);
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.fc-badge-ans {
+  background: rgba(99, 102, 241, 0.16);
+  color: var(--accent);
+  border-color: rgba(99, 102, 241, 0.35);
+}
+
+.fc-text {
+  font-size: 17px;
+  line-height: 1.55;
+  font-weight: 600;
+  max-width: 95%;
+  word-break: break-word;
+  color: var(--text-primary);
+}
+
+.fc-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 14px;
+  opacity: 0.75;
+  flex-shrink: 0;
 }
 
 /* ═══════════════════════════════════════════════════════

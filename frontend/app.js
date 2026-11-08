@@ -2085,66 +2085,153 @@ async function exportSummaryToTasks() {
 }
 
 /* ═══════════════════════════════════════════════════════
-   FLASHCARDS
+   FLASHCARDS (Active Recall & Spaced Repetition)
    ═══════════════════════════════════════════════════════ */
+window.showToast = toast;
+
+function handleGenerateFlashcards() {
+  const topicInput = document.getElementById('fc-topic');
+  const subjectInput = document.getElementById('fc-subject');
+  const countSelect = document.getElementById('fc-count');
+
+  const topic = topicInput ? topicInput.value.trim() : '';
+  const subject = subjectInput ? subjectInput.value.trim() : '';
+  const count = countSelect ? countSelect.value : 10;
+
+  if (!topic) {
+    toast('Please enter a topic for your flashcards (e.g. Biology, Formulas, History)', 'warning');
+    if (topicInput) topicInput.focus();
+    return;
+  }
+
+  generateFlashcards(topic, subject, count);
+}
+
 async function generateFlashcards(topic, subject, count) {
-  showLoading('Generating flashcards with AI...');
+  showLoading('Generating high-yield flashcards with AI...');
   try {
     const data = await api('/ai/flashcards', {
       method: 'POST',
       body: { topic, subject, count: parseInt(count) || 10 }
     });
     hideLoading();
-    AppState.currentFlashcards = data.flashcards.cards;
+
+    // Safely extract cards array regardless of response shape
+    let rawCards = [];
+    if (data?.flashcards?.cards && Array.isArray(data.flashcards.cards)) {
+      rawCards = data.flashcards.cards;
+    } else if (Array.isArray(data?.flashcards)) {
+      rawCards = data.flashcards;
+    } else if (data?.cards && Array.isArray(data.cards)) {
+      rawCards = data.cards;
+    }
+
+    if (!rawCards.length) {
+      throw new Error('No flashcards returned from AI generator. Please try again.');
+    }
+
+    AppState.currentFlashcards = rawCards;
     AppState.flashcardIndex = 0;
     renderFlashcard();
-    document.getElementById('flashcard-count').textContent = `1 / ${AppState.currentFlashcards.length}`;
-    document.getElementById('flashcard-viewer').style.display = 'block';
+
+    const countEl = document.getElementById('flashcard-count');
+    if (countEl) countEl.textContent = `1 / ${AppState.currentFlashcards.length}`;
+
+    const viewerEl = document.getElementById('flashcard-viewer');
+    if (viewerEl) viewerEl.style.display = 'block';
+
+    const emptyEl = document.getElementById('flashcard-empty');
+    if (emptyEl) emptyEl.style.display = 'none';
+
     CyberAudio.play('success');
-    toast(`${AppState.currentFlashcards.length} Flashcards Created!`, 'success');
+    toast(`✨ Generated ${AppState.currentFlashcards.length} Flashcards!`, 'success');
+
+    // Refresh saved decks list so the new deck appears on the left
+    loadFlashcardSets();
   } catch(e) {
     hideLoading();
-    toast('Failed to generate cards: ' + e.message, 'error');
+    console.error('Flashcard error:', e);
+    toast('Failed to generate cards: ' + (e.message || 'Unknown error'), 'error');
+    if (!AppState.currentFlashcards || !AppState.currentFlashcards.length) {
+      const viewerEl = document.getElementById('flashcard-viewer');
+      if (viewerEl) viewerEl.style.display = 'none';
+      const emptyEl = document.getElementById('flashcard-empty');
+      if (emptyEl) emptyEl.style.display = 'block';
+    }
   }
 }
 
 async function loadFlashcardSets() {
   try {
     const data = await api('/ai/flashcards');
-    renderFlashcardSets(data.flashcards);
-  } catch(e) {}
+    const sets = data?.flashcards || [];
+    renderFlashcardSets(sets);
+  } catch(e) {
+    console.warn('Failed to load flashcard sets:', e.message);
+  }
 }
 
 function renderFlashcardSets(sets) {
   const container = document.getElementById('flashcard-sets');
   if (!container) return;
-  if (!sets.length) {
-    container.innerHTML = `<div class="card p-16 text-center text-muted text-sm">No flashcard decks yet. Generate your first deck above.</div>`;
+
+  const list = Array.isArray(sets) ? sets : [];
+  AppState.savedFlashcardDecks = list;
+
+  if (!list.length) {
+    container.innerHTML = `
+      <div class="card p-16 text-center text-muted text-sm">
+        <p style="margin-bottom:10px;">No flashcard decks yet.</p>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="loadSampleFlashcardDeck()">✨ Try Sample Deck</button>
+      </div>`;
     return;
   }
-  container.innerHTML = sets.map(set => `
-    <div class="card card-hover pointer mb-12" onclick="loadFlashcardSet(${JSON.stringify(set.cards).replace(/"/g, '&quot;')}, '${escapeHtml(set.topic)}')">
+
+  container.innerHTML = list.map((set, idx) => `
+    <div class="card card-hover pointer mb-12" onclick="selectSavedDeck(${idx})" title="Click to review this deck">
       <div class="flex-between mb-8">
-        <span class="badge badge-subject">${escapeHtml(set.subject)}</span>
-        <span class="text-xs text-muted font-mono">${set.cards.length} CARDS</span>
+        <span class="badge badge-subject">${escapeHtml(set.subject || 'General')}</span>
+        <span class="text-xs text-muted font-mono">${(set.cards && set.cards.length) || 0} CARDS</span>
       </div>
-      <div class="card-title" style="margin-bottom:4px;">${escapeHtml(set.topic)}</div>
-      <p class="text-xs text-muted">${formatDate(set.createdAt)}</p>
+      <div class="card-title" style="margin-bottom:4px;font-size:14px;">${escapeHtml(set.topic || 'Untitled Deck')}</div>
+      <p class="text-xs text-muted">${set.createdAt ? formatDate(set.createdAt) : 'Saved'}</p>
     </div>
   `).join('');
 }
 
+function selectSavedDeck(index) {
+  const deck = AppState.savedFlashcardDecks?.[index];
+  if (!deck) return;
+  const cards = deck.cards || [];
+  if (!cards.length) {
+    toast('This deck has no cards.', 'warning');
+    return;
+  }
+  loadFlashcardSet(cards, deck.topic || 'Flashcard Deck');
+}
+
 function loadFlashcardSet(cards, topic) {
+  if (!cards || !cards.length) return;
   CyberAudio.play('click');
   AppState.currentFlashcards = cards;
   AppState.flashcardIndex = 0;
   renderFlashcard();
-  document.getElementById('flashcard-count').textContent = `1 / ${cards.length}`;
-  document.getElementById('flashcard-viewer').style.display = 'block';
-  document.getElementById('fc-topic').value = topic;
+
+  const countEl = document.getElementById('flashcard-count');
+  if (countEl) countEl.textContent = `1 / ${cards.length}`;
+
+  const viewerEl = document.getElementById('flashcard-viewer');
+  if (viewerEl) viewerEl.style.display = 'block';
+
+  const emptyEl = document.getElementById('flashcard-empty');
+  if (emptyEl) emptyEl.style.display = 'none';
+
+  const topicInput = document.getElementById('fc-topic');
+  if (topicInput && topic) topicInput.value = topic;
 }
 
 function renderFlashcard() {
+  if (!AppState.currentFlashcards || !AppState.currentFlashcards.length) return;
   const card = AppState.currentFlashcards[AppState.flashcardIndex];
   if (!card) return;
 
@@ -2152,8 +2239,23 @@ function renderFlashcard() {
   const back = document.getElementById('fc-back-text');
   const cardEl = document.getElementById('flashcard-inner');
 
-  if (front) front.textContent = card.front;
-  if (back) back.textContent = card.back;
+  const question = card.front || card.question || card.term || 'Question';
+  const answer = card.back || card.answer || card.definition || 'Answer';
+
+  if (front) {
+    front.innerHTML = `
+      <div class="fc-badge">QUESTION</div>
+      <div class="fc-text">${escapeHtml(question)}</div>
+      <div class="fc-hint">Click card or Spacebar to reveal answer</div>
+    `;
+  }
+  if (back) {
+    back.innerHTML = `
+      <div class="fc-badge fc-badge-ans">ANSWER</div>
+      <div class="fc-text">${escapeHtml(answer)}</div>
+      <div class="fc-hint">Click card or Spacebar to flip back</div>
+    `;
+  }
   if (cardEl) cardEl.classList.remove('flipped');
 }
 
@@ -2163,22 +2265,66 @@ function flipFlashcard() {
 }
 
 function nextFlashcard() {
+  if (!AppState.currentFlashcards || !AppState.currentFlashcards.length) return;
   if (AppState.flashcardIndex < AppState.currentFlashcards.length - 1) {
     CyberAudio.play('click');
     AppState.flashcardIndex++;
     renderFlashcard();
-    document.getElementById('flashcard-count').textContent = `${AppState.flashcardIndex + 1} / ${AppState.currentFlashcards.length}`;
+    const countEl = document.getElementById('flashcard-count');
+    if (countEl) countEl.textContent = `${AppState.flashcardIndex + 1} / ${AppState.currentFlashcards.length}`;
+  } else {
+    // Loop back to start
+    CyberAudio.play('success');
+    AppState.flashcardIndex = 0;
+    renderFlashcard();
+    const countEl = document.getElementById('flashcard-count');
+    if (countEl) countEl.textContent = `1 / ${AppState.currentFlashcards.length}`;
+    toast('Completed deck! Restarting from card 1.', 'info');
   }
 }
 
 function prevFlashcard() {
+  if (!AppState.currentFlashcards || !AppState.currentFlashcards.length) return;
   if (AppState.flashcardIndex > 0) {
     CyberAudio.play('click');
     AppState.flashcardIndex--;
     renderFlashcard();
-    document.getElementById('flashcard-count').textContent = `${AppState.flashcardIndex + 1} / ${AppState.currentFlashcards.length}`;
+    const countEl = document.getElementById('flashcard-count');
+    if (countEl) countEl.textContent = `${AppState.flashcardIndex + 1} / ${AppState.currentFlashcards.length}`;
   }
 }
+
+function loadSampleFlashcardDeck() {
+  const sampleCards = [
+    { front: "What is Active Recall in study science?", back: "Testing yourself on material rather than passively re-reading it, strengthening synaptic memory pathways.", difficulty: "easy" },
+    { front: "What is Spaced Repetition?", back: "Reviewing concepts at increasing intervals (1 day, 3 days, 1 week) to disrupt the forgetting curve.", difficulty: "easy" },
+    { front: "What is the Pomodoro Technique?", back: "Studying in 25-minute focused sprints followed by 5-minute restorative breaks to optimize mental stamina.", difficulty: "easy" },
+    { front: "What is the Feynman Technique?", back: "Explaining a concept in simple language as if teaching a child, revealing knowledge gaps immediately.", difficulty: "medium" },
+    { front: "What is Interleaving in learning?", back: "Mixing different topics or problem types within one study session instead of blocking one topic for hours.", difficulty: "medium" }
+  ];
+  loadFlashcardSet(sampleCards, "Learning & Memory Science");
+  toast("Loaded sample deck: Learning & Memory Science", "success");
+}
+
+// Keyboard shortcuts for flashcards (Space to flip, Left/Right arrows to navigate)
+document.addEventListener('keydown', (e) => {
+  const viewer = document.getElementById('flashcard-viewer');
+  if (!viewer || viewer.style.display === 'none') return;
+
+  const tag = (e.target.tagName || '').toLowerCase();
+  if (tag === 'input' || tag === 'textarea' || tag === 'select' || e.target.isContentEditable) return;
+
+  if (e.key === ' ' || e.code === 'Space') {
+    e.preventDefault();
+    flipFlashcard();
+  } else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
+    e.preventDefault();
+    nextFlashcard();
+  } else if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
+    e.preventDefault();
+    prevFlashcard();
+  }
+});
 
 /* ═══════════════════════════════════════════════════════
    CYBER ALARM SYSTEM

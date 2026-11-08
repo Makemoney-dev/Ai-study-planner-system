@@ -466,37 +466,71 @@ exports.generateFlashcards = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Topic is required' });
     }
 
-    const systemPrompt = `You are an expert educational content creator. Generate high-quality flashcards. Respond with valid JSON only.`;
+    const cardCount = Math.min(Math.max(parseInt(count) || 10, 3), 25);
+    const systemPrompt = `You are an expert educator and active-recall specialist. Create high-yield study flashcards. Respond with valid JSON only.`;
 
-    const userMessage = `Create ${count} flashcards about "${topic}" for ${subject || 'general study'}.
+    const userMessage = `Create ${cardCount} high-yield flashcards about "${topic}" for ${subject || 'general study'}.
 Difficulty level: ${difficulty}
 
-Return valid JSON with format:
+Return valid JSON in this exact structure:
 {
   "cards": [
-    {"front": "question or term", "back": "answer or definition", "difficulty": "${difficulty}"}
+    {
+      "front": "Concise, specific question or concept to test",
+      "back": "Clear, comprehensive answer or explanation",
+      "difficulty": "${difficulty}"
+    }
   ]
 }`;
 
-    let aiResponse = await callAI([{ role: 'user', content: userMessage }], systemPrompt, 2000);
+    let aiResponse = await callAI([{ role: 'user', content: userMessage }], systemPrompt, 2048);
 
     let parsed = parseJsonSafely(aiResponse);
-    let cards = parsed?.cards;
-    if (!cards || !Array.isArray(cards) || cards.length === 0) {
-      cards = getMockFlashcards(topic, count);
+    let cards = parsed?.cards || (Array.isArray(parsed) ? parsed : null);
+
+    if (cards && Array.isArray(cards) && cards.length > 0) {
+      cards = cards.map(c => ({
+        front: c.front || c.question || c.term || 'Question',
+        back: c.back || c.answer || c.definition || 'Answer',
+        difficulty: c.difficulty || difficulty || 'medium'
+      }));
+    } else {
+      cards = getMockFlashcards(topic, cardCount);
     }
 
-    // Save flashcards
-    const flashcard = await Flashcard.create({
-      user: req.user.id,
-      subject: subject || 'General',
-      topic,
-      cards,
-      aiGenerated: true
-    });
+    // Persist flashcards to database if available
+    let flashcard = null;
+    const userId = req.user?._id || req.user?.id;
+    try {
+      if (userId && Flashcard) {
+        flashcard = await Flashcard.create({
+          user: userId,
+          subject: subject || 'General',
+          topic,
+          cards,
+          aiGenerated: true
+        });
+      }
+    } catch (dbErr) {
+      console.warn('Flashcard database persist warning:', dbErr.message);
+    }
+
+    // If database unavailable, return transient flashcard deck
+    if (!flashcard) {
+      flashcard = {
+        _id: 'deck_' + Date.now(),
+        user: userId || 'guest',
+        subject: subject || 'General',
+        topic,
+        cards,
+        aiGenerated: true,
+        createdAt: new Date().toISOString()
+      };
+    }
 
     res.json({ success: true, flashcards: flashcard });
   } catch (error) {
+    console.error('generateFlashcards error:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -504,10 +538,15 @@ Return valid JSON with format:
 // GET /api/ai/flashcards
 exports.getFlashcards = async (req, res) => {
   try {
-    const flashcards = await Flashcard.find({ user: req.user.id }).sort('-createdAt');
-    res.json({ success: true, flashcards });
+    const userId = req.user?._id || req.user?.id;
+    let flashcards = [];
+    if (userId && Flashcard) {
+      flashcards = await Flashcard.find({ user: userId }).sort('-createdAt');
+    }
+    res.json({ success: true, flashcards: flashcards || [] });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.warn('getFlashcards error:', error.message);
+    res.json({ success: true, flashcards: [] });
   }
 };
 
@@ -663,11 +702,26 @@ function getMockChatResponse(message) {
 
 function getMockFlashcards(topic, count) {
   const cards = [];
-  for (let i = 1; i <= Math.min(count, 5); i++) {
+  const limit = Math.min(Math.max(parseInt(count) || 10, 3), 20);
+  const templates = [
+    { q: `What is the fundamental definition of ${topic}?`, a: `${topic} is a core academic subject focusing on the fundamental principles, mechanisms, and interactions in this field.` },
+    { q: `What is the primary function or significance of ${topic}?`, a: `It enables analytical problem solving, structural understanding, and practical application in real-world scenarios.` },
+    { q: `What are the key components or building blocks of ${topic}?`, a: `It consists of foundational rules, governing variables, structural inputs, and reproducible outcomes.` },
+    { q: `How does ${topic} operate or function step by step?`, a: `It begins with initial conditions, follows predictable operational stages, and stabilizes in an observable end state.` },
+    { q: `What is a common misconception about ${topic}?`, a: `Many students confuse the surface symptoms with the underlying cause; remembering the root mechanism avoids this pitfall.` },
+    { q: `What formula, theorem, or rule governs ${topic}?`, a: `Governed by the conservation laws and proportional relationships established in classical and modern theory.` },
+    { q: `How can you apply ${topic} in an exam or practical scenario?`, a: `Identify the known inputs, isolate the key variable, apply standard formulas, and check units or edge cases.` },
+    { q: `How does ${topic} connect to adjacent concepts?`, a: `It bridges fundamental foundational theory with advanced specialized applications in higher-level topics.` },
+    { q: `What is an effective mnemonic or memory aid for ${topic}?`, a: `Remember the acronym or first letters of each stage to recall the sequence under exam time pressure.` },
+    { q: `How do you verify your mastery of ${topic}?`, a: `Use the Feynman technique: explain the concept from scratch to a peer without referencing notes.` }
+  ];
+
+  for (let i = 0; i < limit; i++) {
+    const t = templates[i % templates.length];
     cards.push({
-      front: `What is a key concept #${i} in ${topic}?`,
-      back: `This is a key definition or explanation for concept #${i}.`,
-      difficulty: i <= 2 ? 'easy' : i <= 4 ? 'medium' : 'hard'
+      front: t.q,
+      back: t.a,
+      difficulty: i < 3 ? 'easy' : i < 7 ? 'medium' : 'hard'
     });
   }
   return cards;

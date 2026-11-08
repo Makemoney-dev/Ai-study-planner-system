@@ -821,7 +821,10 @@
           </div>
 
           <div class="card">
-            <div class="card-title">📚 Saved Decks</div>
+            <div class="flex-between mb-12">
+              <div class="card-title" style="margin-bottom:0;">📚 Saved Decks</div>
+              <button type="button" class="btn btn-ghost btn-sm" onclick="loadSampleFlashcardDeck()" title="Load active recall sample deck">✨ Sample Deck</button>
+            </div>
             <div id="flashcard-sets">
               <div class="flex-center" style="padding:24px;"><div class="spinner"></div></div>
             </div>
@@ -832,8 +835,8 @@
           <div id="flashcard-viewer" style="display:none;">
             <div class="card mb-16">
               <div class="flex-between mb-16">
-                <span class="text-sm font-bold" id="flashcard-count">0 / 0</span>
-                <span class="text-xs text-muted">(Click card to flip)</span>
+                <span class="text-sm font-bold font-mono" id="flashcard-count">0 / 0</span>
+                <span class="text-xs text-muted">Tap card or press Space to flip</span>
               </div>
 
               <div class="flashcard-scene" onclick="flipFlashcard()">
@@ -847,10 +850,10 @@
                 </div>
               </div>
 
-              <div class="timer-controls" style="margin-top:16px;justify-content:center;">
-                <button class="btn btn-secondary" onclick="prevFlashcard()">← Previous</button>
-                <button class="btn btn-ghost" onclick="flipFlashcard()">🔄 Flip Card</button>
-                <button class="btn btn-secondary" onclick="nextFlashcard()">Next →</button>
+              <div class="timer-controls" style="margin-top:16px;justify-content:center;gap:10px;">
+                <button type="button" class="btn btn-secondary" onclick="prevFlashcard()" title="Previous (Left Arrow)">← Previous</button>
+                <button type="button" class="btn btn-ghost" onclick="flipFlashcard()" title="Flip card (Spacebar)">🔄 Flip Card</button>
+                <button type="button" class="btn btn-secondary" onclick="nextFlashcard()" title="Next (Right Arrow)">Next →</button>
               </div>
             </div>
           </div>
@@ -858,7 +861,8 @@
           <div class="card" style="text-align:center;padding:48px;" id="flashcard-empty">
             <div style="font-size:42px;margin-bottom:14px;">🃏</div>
             <h3 style="font-size:17px;font-weight:600;margin-bottom:8px;">No Deck Selected</h3>
-            <p class="text-secondary text-sm">Generate a new flashcard deck on the left or select a saved deck to start reviewing.</p>
+            <p class="text-secondary text-sm mb-16">Generate a new flashcard deck on the left or try out a sample deck to start reviewing.</p>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="loadSampleFlashcardDeck()">✨ Try Sample Deck</button>
           </div>
         </div>
       </div>
@@ -1384,20 +1388,6 @@ function updatePomodoroDuration() {
     AppState.timer.seconds = TIMER_MODES[AppState.timer.mode];
     updateTimerDisplay();
   }
-}
-
-function handleGenerateFlashcards() {
-  const topic = document.getElementById('fc-topic').value.trim();
-  const subject = document.getElementById('fc-subject').value.trim();
-  const count = document.getElementById('fc-count').value;
-
-  if (!topic) {
-    toast('Please enter a topic', 'warning');
-    return;
-  }
-
-  document.getElementById('flashcard-empty').style.display = 'none';
-  generateFlashcards(topic, subject, count);
 }
 
 function changeCalMonth(direction) {
