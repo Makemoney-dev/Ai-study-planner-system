@@ -779,7 +779,7 @@
             <textarea
               id="chat-input"
               class="chat-input"
-              placeholder="Ask a question about any subject or your attached file..."
+              placeholder="Ask question with ASK AI"
               rows="1"
               onkeydown="handleChatKeydown(event)"
               oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight, 120)+'px'"
@@ -1384,26 +1384,6 @@ function updatePomodoroDuration() {
     AppState.timer.seconds = TIMER_MODES[AppState.timer.mode];
     updateTimerDisplay();
   }
-}
-
-function handleChatKeydown(e) {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    submitChat();
-  }
-}
-
-function submitChat() {
-  const input = document.getElementById('chat-input');
-  const message = input.value.trim();
-  if (!message) return;
-  input.value = '';
-  input.style.height = 'auto';
-  sendChatMessage(message);
-}
-
-function chatSuggestion(text) {
-  sendChatMessage(text);
 }
 
 function handleGenerateFlashcards() {
