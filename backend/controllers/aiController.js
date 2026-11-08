@@ -397,36 +397,57 @@ Keep it to ${Math.min(daysUntilExam > 7 ? 4 : 1, 4)} weeks.`;
   }
 };
 
-// POST /api/ai/chat
+// POST /api/ai/chat (Supports text conversations and file attachments like ChatGPT / Claude)
 exports.chat = async (req, res) => {
   try {
-    const { message, conversationHistory = [], context = '' } = req.body;
+    const { message, conversationHistory = [], context = '', file, mimeType, fileName } = req.body;
 
-    if (!message) {
-      return res.status(400).json({ success: false, message: 'Message is required' });
+    if (!message && !file) {
+      return res.status(400).json({ success: false, message: 'Message or file is required' });
     }
 
-    const systemPrompt = `You are StudyBot, an expert AI study assistant. You help students with:
-- Explaining complex topics in simple terms
-- Creating quiz questions and practice problems
-- Summarizing notes and content
-- Providing study strategies and tips
-- Generating mnemonics and memory aids
-- Answering subject-specific questions
+    const systemPrompt = `You are StudyBot, an expert AI tutor and study companion (similar to ChatGPT and Claude for education). You help students with:
+- Analyzing and explaining attached documents, textbook pages, PDFs, formulas, and homework questions
+- Explaining complex concepts simply with intuitive step-by-step breakdowns
+- Answering questions accurately with clean formatting, bullet points, and examples
+- Providing study tips, practice problems, and guidance
 
 ${context ? `Current context: ${context}` : ''}
+Be encouraging, pedagogical, and clear. Format your explanations with clean markdown.`;
 
-Be encouraging, clear, and concise. Format responses with markdown when helpful.`;
+    let aiResponse = '';
 
-    const messages = [
-      ...conversationHistory.slice(-10), // Keep last 10 messages for context
-      { role: 'user', content: message }
-    ];
+    if (file) {
+      // Multimodal chat with attached file (PDF or Image)
+      const userPrompt = message
+        ? `${message}\n\n(Attached file: ${fileName || 'document'})`
+        : `Please examine and explain this attached ${fileName ? fileName : 'document'}, summarizing its key points and highlighting what is most important for a student to understand.`;
 
-    let aiResponse = await callAI(messages, systemPrompt, 1500);
+      const isPdf = (mimeType && mimeType.includes('pdf')) || (typeof file === 'string' && file.startsWith('data:application/pdf'));
+      const activeMime = isPdf ? 'application/pdf' : (mimeType || 'image/jpeg');
 
-    if (!aiResponse) {
-      aiResponse = getMockChatResponse(message);
+      // Include recent conversation context in prompt if available
+      let historyContext = '';
+      if (conversationHistory.length > 0) {
+        historyContext = 'Recent conversation context:\n' + conversationHistory.slice(-4).map(m => `${m.role === 'user' ? 'Student' : 'Tutor'}: ${m.content}`).join('\n') + '\n\n';
+      }
+
+      aiResponse = await callAIVision(file, activeMime, historyContext + userPrompt, systemPrompt);
+
+      if (!aiResponse) {
+        aiResponse = `I've analyzed your attached ${isPdf ? 'PDF document' : 'image'} (${fileName || 'file'}). Here is what I can help you with:\n\n• **Concept Breakdown**: Ask me to explain any difficult paragraph, formula, or diagram in this file.\n• **Quiz Questions**: Say "Test me on this file" to generate practice questions.\n• **Summary**: Say "Summarize this file" for a high-yield study sheet.\n\nWhat specific question do you have about this document?`;
+      }
+    } else {
+      const messages = [
+        ...conversationHistory.slice(-10), // Keep last 10 messages for context
+        { role: 'user', content: message }
+      ];
+
+      aiResponse = await callAI(messages, systemPrompt, 1500);
+
+      if (!aiResponse) {
+        aiResponse = getMockChatResponse(message);
+      }
     }
 
     res.json({ success: true, response: aiResponse });

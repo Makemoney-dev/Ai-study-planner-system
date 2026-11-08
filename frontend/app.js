@@ -1126,16 +1126,135 @@ function updateTimerRing(progress) {
 }
 
 /* ═══════════════════════════════════════════════════════
-   AI CHAT ASSISTANT
+   AI CHAT ASSISTANT (Multimodal: Chat + PDF/Photo Attachments)
    ═══════════════════════════════════════════════════════ */
+let chatAttachedFile = null;
+
+function formatBytes(bytes) {
+  if (!bytes || bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}
+
+async function handleChatFileUpload(e) {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+
+  const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+  const isImage = file.type.startsWith('image/');
+
+  if (!isPdf && !isImage) {
+    showToast('Please select a PDF document or image file.', 'error');
+    e.target.value = '';
+    return;
+  }
+
+  if (file.size > 10 * 1024 * 1024) {
+    showToast('File size must be under 10MB', 'error');
+    e.target.value = '';
+    return;
+  }
+
+  try {
+    let base64Data = '';
+    let previewUrl = '';
+
+    if (isImage) {
+      const rawDataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      base64Data = await compressImage(rawDataUrl, 1200, 0.85);
+      previewUrl = base64Data;
+    } else {
+      // PDF Document
+      base64Data = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      previewUrl = '';
+    }
+
+    chatAttachedFile = {
+      file: base64Data,
+      mimeType: isPdf ? 'application/pdf' : (file.type || 'image/jpeg'),
+      fileName: file.name,
+      fileSize: file.size,
+      isPdf,
+      previewUrl
+    };
+
+    renderChatAttachedPill();
+    CyberAudio.play('click');
+  } catch (err) {
+    console.error('Chat file attach error:', err);
+    showToast('Failed to attach file: ' + err.message, 'error');
+  } finally {
+    e.target.value = '';
+  }
+}
+
+function renderChatAttachedPill() {
+  const pill = document.getElementById('chat-attached-pill');
+  if (!pill) return;
+
+  if (!chatAttachedFile) {
+    pill.classList.add('hidden');
+    return;
+  }
+
+  const nameEl = document.getElementById('chat-attached-name');
+  const sizeEl = document.getElementById('chat-attached-size');
+  const imgEl = document.getElementById('chat-attached-img');
+  const docIcon = document.getElementById('chat-attached-doc-icon');
+
+  if (nameEl) nameEl.textContent = chatAttachedFile.fileName;
+  if (sizeEl) sizeEl.textContent = formatBytes(chatAttachedFile.fileSize);
+
+  if (chatAttachedFile.isPdf) {
+    if (imgEl) imgEl.style.display = 'none';
+    if (docIcon) docIcon.style.display = 'block';
+  } else {
+    if (imgEl) {
+      imgEl.src = chatAttachedFile.previewUrl;
+      imgEl.style.display = 'block';
+    }
+    if (docIcon) docIcon.style.display = 'none';
+  }
+
+  pill.classList.remove('hidden');
+}
+
+function removeChatAttachment() {
+  chatAttachedFile = null;
+  const pill = document.getElementById('chat-attached-pill');
+  if (pill) pill.classList.add('hidden');
+  const fileInput = document.getElementById('chat-file-input');
+  if (fileInput) fileInput.value = '';
+}
+
 function submitChat() {
   const input = document.getElementById('chat-input');
   if (!input) return;
   const msg = input.value.trim();
-  if (!msg) return;
+  const attachment = chatAttachedFile ? { ...chatAttachedFile } : null;
+
+  if (!msg && !attachment) return;
+
   input.value = '';
   input.style.height = 'auto';
-  sendChatMessage(msg);
+
+  if (attachment) {
+    removeChatAttachment();
+  }
+
+  sendChatMessage(msg, attachment);
 }
 
 function handleChatKeydown(e) {
@@ -1154,22 +1273,35 @@ function chatSuggestion(text) {
   submitChat();
 }
 
-async function sendChatMessage(message) {
-  if (!message.trim()) return;
+async function sendChatMessage(message, attachment = null) {
+  const text = message ? message.trim() : '';
+  if (!text && !attachment) return;
 
-  addChatMessage(message, 'user');
-  AppState.chatHistory.push({ role: 'user', content: message });
+  addChatMessage(text, 'user', attachment);
+
+  const historyContent = text
+    ? (attachment ? `${text} [Attached file: ${attachment.fileName}]` : text)
+    : `[Attached file: ${attachment.fileName}]`;
+  AppState.chatHistory.push({ role: 'user', content: historyContent });
   CyberAudio.play('click');
 
   const typingId = addTypingIndicator();
 
   try {
+    const payload = {
+      message: text,
+      conversationHistory: AppState.chatHistory.slice(-10)
+    };
+
+    if (attachment && attachment.file) {
+      payload.file = attachment.file;
+      payload.mimeType = attachment.mimeType;
+      payload.fileName = attachment.fileName;
+    }
+
     const data = await api('/ai/chat', {
       method: 'POST',
-      body: {
-        message,
-        conversationHistory: AppState.chatHistory.slice(-10)
-      }
+      body: payload
     });
 
     removeTypingIndicator(typingId);
@@ -1182,7 +1314,7 @@ async function sendChatMessage(message) {
   }
 }
 
-function addChatMessage(text, role) {
+function addChatMessage(text, role, attachment = null) {
   const container = document.getElementById('chat-messages');
   if (!container) return;
 
@@ -1190,11 +1322,34 @@ function addChatMessage(text, role) {
     ? (AppState.user?.name?.[0] || 'U').toUpperCase()
     : '🤖';
 
+  let attachmentHtml = '';
+  if (attachment) {
+    const isPdf = attachment.isPdf || (attachment.mimeType && attachment.mimeType.includes('pdf'));
+    const thumbHtml = (!isPdf && attachment.previewUrl)
+      ? `<img src="${attachment.previewUrl}" alt="thumb" />`
+      : `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/></svg>`;
+
+    attachmentHtml = `
+      <div class="chat-file-chip">
+        <div class="chat-file-chip-thumb">${thumbHtml}</div>
+        <div class="chat-file-chip-info">
+          <span class="chat-file-chip-name">${escapeHtml(attachment.fileName || 'file')}</span>
+          ${attachment.fileSize ? `<span class="chat-file-chip-size">${formatBytes(attachment.fileSize)}</span>` : ''}
+        </div>
+      </div>
+    `;
+  }
+
+  const formattedText = text ? formatMarkdown(text) : '';
+
   const el = document.createElement('div');
   el.className = `chat-message ${role}`;
   el.innerHTML = `
     <div class="chat-avatar">${avatarContent}</div>
-    <div class="chat-bubble">${formatMarkdown(text)}</div>
+    <div class="chat-bubble">
+      ${attachmentHtml}
+      ${formattedText}
+    </div>
   `;
   container.appendChild(el);
   container.scrollTop = container.scrollHeight;
